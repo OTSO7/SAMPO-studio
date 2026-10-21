@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { setLineDirection, type LineBlock } from "../model";
+import { setLineDirection, type BeatId, type BlockId, type LineBlock } from "../model";
 import { sampleStory } from "../testing/sample-story";
 import { storyToMarkdown } from "./script-markdown";
 import { collectVoiceLines, estimateSeconds, voiceLineId, voiceLinesToCsv } from "./voice-lines";
@@ -52,6 +52,9 @@ describe("voiceLinesToCsv", () => {
     const csv = voiceLinesToCsv([
       {
         id: "VO_A_0001",
+        blockId: "bk_a" as BlockId,
+        beatId: "bt_a" as BeatId,
+        speaker: null,
         character: "A",
         text: 'Hän sanoi "ei", ja lähti.\nHiljaisuus.',
         direction: "",

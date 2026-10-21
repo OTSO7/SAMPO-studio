@@ -1,8 +1,11 @@
-import type { Entity, LineBlock, Story } from "../model";
+import type { BeatId, BlockId, Entity, EntityId, LineBlock, Story } from "../model";
 
 export interface VoiceLine {
   /** Stable across edits and reordering, so recordings stay matched to their line. */
   readonly id: string;
+  readonly blockId: BlockId;
+  readonly beatId: BeatId;
+  readonly speaker: EntityId | null;
   readonly character: string;
   readonly text: string;
   readonly direction: string;
@@ -24,6 +27,9 @@ export function collectVoiceLines(story: Story): VoiceLine[] {
           const character = line.speaker === null ? "" : (names.get(line.speaker) ?? "");
           return {
             id: voiceLineId(character, line.id),
+            blockId: line.id,
+            beatId: beat.id,
+            speaker: line.speaker,
             character,
             text: line.text,
             direction: line.direction ?? "",
