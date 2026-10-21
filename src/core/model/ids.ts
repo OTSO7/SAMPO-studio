@@ -13,6 +13,7 @@ export type PhaseId = Brand<string, "PhaseId">;
 export type BeatId = Brand<string, "BeatId">;
 export type BlockId = Brand<string, "BlockId">;
 export type EntityId = Brand<string, "EntityId">;
+export type CardTypeId = Brand<string, "CardTypeId">;
 
 /**
  * Short prefixes make ids self-describing in files, diffs and engine logs:
@@ -24,6 +25,7 @@ const PREFIXES = {
   beat: "bt",
   block: "bk",
   entity: "en",
+  cardType: "ct",
 } as const;
 
 export type IdKind = keyof typeof PREFIXES;
@@ -34,6 +36,7 @@ interface IdTypes {
   beat: BeatId;
   block: BlockId;
   entity: EntityId;
+  cardType: CardTypeId;
 }
 
 export type IdFactory = { readonly [K in IdKind]: () => IdTypes[K] };
@@ -51,6 +54,7 @@ export function createIdFactory(source?: IdSource): IdFactory {
     beat: make("beat"),
     block: make("block"),
     entity: make("entity"),
+    cardType: make("cardType"),
   };
 }
 

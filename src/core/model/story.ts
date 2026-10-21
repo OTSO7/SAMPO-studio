@@ -1,29 +1,33 @@
 import type { Block } from "./block";
 import type { Entity } from "./entity";
-import type { BeatId, PhaseId, StoryId } from "./ids";
+import type { BeatId, CardTypeId, PhaseId, StoryId } from "./ids";
+import type { Swatch } from "./palette";
 
 /**
- * What a beat is for. Lenses use this to filter: the mechanics lens shows `mechanic` beats,
- * the story lens shows everything.
+ * A kind of card the author defines for their own story: "Scene", "Gameplay", "Boss fight",
+ * "Flashback". Every story has at least one; the first is the default for new cards.
  */
-export const BEAT_KINDS = ["narrative", "mechanic", "shift", "insight"] as const;
-export type BeatKind = (typeof BEAT_KINDS)[number];
+export interface CardType {
+  readonly id: CardTypeId;
+  readonly name: string;
+  readonly color: Swatch;
+}
 
-/** Perceived tension on a 0–5 scale, plotted by the tension lens. */
+/** Perceived tension on a 0–5 scale. */
 export type Intensity = 0 | 1 | 2 | 3 | 4 | 5;
 
-/** One moment within a phase, e.g. "Tutkinta" or "The Shift". */
+/** One card on the board: a moment, a scene, a conversation. */
 export interface Beat {
   readonly id: BeatId;
-  readonly kind: BeatKind;
-  /** The author's own heading for the beat, if the source text had one. */
+  readonly typeId: CardTypeId;
+  /** The author's own heading for the card. */
   readonly label?: string;
   readonly intensity?: Intensity;
   readonly blocks: readonly Block[];
 }
 
 /**
- * A chapter-sized unit of the story. Phases are numbered by their position in
+ * A column on the board: a chapter, act or level. Phases are numbered by their position in
  * `Story.phases`, so reordering never leaves stale numbers behind.
  */
 export interface Phase {
@@ -36,6 +40,7 @@ export interface Phase {
 export interface Story {
   readonly id: StoryId;
   readonly title: string;
+  readonly cardTypes: readonly CardType[];
   readonly phases: readonly Phase[];
   readonly entities: readonly Entity[];
 }
