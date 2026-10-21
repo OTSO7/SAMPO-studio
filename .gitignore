@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Story content is private and lives outside this repository. Never commit save files,
+# even if one is accidentally saved inside the project folder.
+*.sampo
+*.sampo.tmp
