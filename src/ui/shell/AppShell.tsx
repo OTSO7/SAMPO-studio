@@ -1,45 +1,69 @@
+import { useCallback, useEffect, useState } from "react";
+
+import { Board } from "@ui/board/Board";
+import { FocusView } from "@ui/focus/FocusView";
+import { useStore } from "@ui/hooks/use-store";
+import { useServices } from "@ui/services/use-services";
+import { NoticeBar } from "./NoticeBar";
+import { PromptDialog } from "./PromptDialog";
+import { StartScreen } from "./StartScreen";
+import { Statusbar } from "./Statusbar";
+import { Titlebar } from "./Titlebar";
+import { useShortcuts } from "./use-shortcuts";
+
 import "./app-shell.css";
 
-const APP_VERSION = "0.1.0";
-
-const START_ACTIONS = [
-  { label: "New story", keys: ["Ctrl", "N"] },
-  { label: "Open…", keys: ["Ctrl", "O"] },
-  { label: "Paste script", keys: ["Ctrl", "V"] },
-] as const;
-
 export function AppShell() {
+  const { deps } = useServices();
+  const story = useStore(deps.document, (state) => state.story);
+  const [focusing, setFocusing] = useState(false);
+  useShortcuts(deps);
+
+  const exitFocus = useCallback(() => {
+    setFocusing(false);
+  }, []);
+
+  // F5 starts presenting, as in every slide tool.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "F5" && story !== null) {
+        event.preventDefault();
+        setFocusing((current) => !current);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [story]);
+
+  if (focusing && story !== null) {
+    return (
+      <>
+        <FocusView story={story} onExit={exitFocus} />
+        <NoticeBar />
+        <PromptDialog />
+      </>
+    );
+  }
+
   return (
     <div className="shell">
-      <header className="shell__titlebar">
-        <div className="shell__wordmark" aria-label="SAMPO Studio">
-          <span className="shell__wordmark-mark" aria-hidden="true" />
-          SAMPO
-        </div>
-      </header>
-
-      <main className="shell__main">
-        <section className="start" aria-label="Start">
-          <p className="start__eyebrow">No story open</p>
-          <ul className="start__actions">
-            {START_ACTIONS.map((action) => (
-              <li key={action.label} className="start__action">
-                <span>{action.label}</span>
-                <span className="start__keys">
-                  {action.keys.map((key) => (
-                    <kbd key={key}>{key}</kbd>
-                  ))}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
+      <Titlebar
+        onFocus={
+          story === null
+            ? null
+            : () => {
+                setFocusing(true);
+              }
+        }
+      />
+      <main className={`shell__main ${story === null ? "" : "shell__main--board"}`}>
+        {story === null ? <StartScreen /> : <Board story={story} />}
       </main>
-
-      <footer className="shell__statusbar">
-        <span>No file</span>
-        <span>v{APP_VERSION}</span>
-      </footer>
+      <Statusbar />
+      <NoticeBar />
+      <PromptDialog />
     </div>
   );
 }

@@ -12,4 +12,5 @@ import "@fontsource-variable/source-serif-4/index.css";
 import "@fontsource-variable/source-serif-4/wght-italic.css";
 
 import "./tokens.css";
+import "./swatches.css";
 import "./base.css";

@@ -1,0 +1,48 @@
+/*
+ * Colours for card types and characters. Files store the swatch name; the shade lives here,
+ * tuned to sit quietly on ink and stay apart from each other.
+ */
+:root {
+  --swatch-bone: #d9d3c5;
+  --swatch-ochre: #f0a742;
+  --swatch-signal: #81c6cf;
+  --swatch-rose: #d98b8b;
+  --swatch-moss: #9db37c;
+  --swatch-violet: #a99bd6;
+  --swatch-slate: #8e9aa6;
+  --swatch-amber: #d9b45a;
+}
+
+[data-swatch="bone"] {
+  --swatch: var(--swatch-bone);
+}
+[data-swatch="ochre"] {
+  --swatch: var(--swatch-ochre);
+}
+[data-swatch="signal"] {
+  --swatch: var(--swatch-signal);
+}
+[data-swatch="rose"] {
+  --swatch: var(--swatch-rose);
+}
+[data-swatch="moss"] {
+  --swatch: var(--swatch-moss);
+}
+[data-swatch="violet"] {
+  --swatch: var(--swatch-violet);
+}
+[data-swatch="slate"] {
+  --swatch: var(--swatch-slate);
+}
+[data-swatch="amber"] {
+  --swatch: var(--swatch-amber);
+}
+
+.swatch-dot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--swatch, var(--bone-faint));
+}

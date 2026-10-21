@@ -41,11 +41,48 @@
   transform: rotate(45deg);
 }
 
+.shell__title {
+  position: absolute;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 50%;
+  transform: translateX(-50%);
+  overflow: hidden;
+  font-size: var(--text-sm);
+  color: var(--bone-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.shell__dirty {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ochre-text);
+}
+
 .shell__main {
   display: grid;
   place-items: center;
   min-height: 0;
   overflow: auto;
+}
+
+.shell__main--board {
+  place-items: stretch;
+  overflow: hidden;
+}
+
+.shell__status-right {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.shell__status--error {
+  color: var(--danger);
 }
 
 .shell__statusbar {
@@ -88,31 +125,238 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
   padding: var(--space-3) 0;
+  border: 0;
   border-bottom: 1px solid var(--hairline);
+  background: none;
   font-size: var(--text-sm);
+  text-align: left;
+  color: var(--bone-muted);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.start__action:hover {
+  color: var(--bone);
+}
+
+.start__action:hover .kbd {
   color: var(--bone-muted);
 }
 
-.start__keys {
+/* Notices float above the status bar so they never shift the layout. */
+.notice {
+  position: fixed;
+  right: var(--space-4);
+  bottom: calc(var(--statusbar-height) + var(--space-4));
   display: flex;
-  gap: var(--space-1);
+  gap: var(--space-4);
+  width: min(420px, calc(100% - 2 * var(--space-4)));
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--hairline-strong);
+  border-left: 2px solid var(--bone-faint);
+  border-radius: var(--radius-sm);
+  background: var(--ink-overlay);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
+  animation: start-in var(--duration-base) var(--ease-out) both;
 }
 
-.start__keys kbd {
-  min-width: 22px;
-  padding: 1px var(--space-1);
-  border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-sm);
+.notice--error {
+  border-left-color: var(--danger);
+}
+
+.notice__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.notice__title {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.notice__details {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  text-align: center;
+  line-height: 1.6;
+  color: var(--bone-muted);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.notice__close {
+  align-self: start;
+  padding: 0 var(--space-1);
+  border: 0;
+  background: none;
+  font-size: var(--text-lg);
+  line-height: 1;
   color: var(--bone-faint);
+  cursor: pointer;
+}
+
+.notice__close:hover {
+  color: var(--bone);
 }
 
 @keyframes start-in {
   from {
     opacity: 0;
     transform: translateY(6px);
+  }
+}
+
+.shell__focus {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 28px;
+  margin-left: auto;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border: 1px solid var(--ochre);
+  border-radius: var(--radius-sm);
+  background: var(--ochre-wash);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--bone);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.shell__focus:hover {
+  background: rgb(169 102 9 / 28%);
+}
+
+/* A small play triangle drawn in CSS. */
+.shell__focus-icon {
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid var(--ochre-text);
+}
+
+body.is-resizing,
+body.is-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+.shell__wordmark--button {
+  padding: var(--space-1) var(--space-2);
+  margin-left: calc(-1 * var(--space-2));
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--bone);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
+}
+
+.shell__wordmark--button:hover {
+  border-color: var(--hairline-strong);
+  background: var(--ink-raised);
+}
+
+/* ---------- prompt dialog ---------- */
+
+.prompt-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 55%);
+  animation: prompt-fade var(--duration-fast) var(--ease-out) both;
+}
+
+.prompt {
+  display: grid;
+  gap: var(--space-3);
+  width: min(440px, calc(100% - 2 * var(--space-5)));
+  padding: var(--space-5);
+  border: 1px solid var(--hairline-strong);
+  border-top: 2px solid var(--ochre);
+  border-radius: var(--radius-md);
+  background: var(--ink-overlay);
+  box-shadow: 0 30px 80px rgb(0 0 0 / 60%);
+  animation: prompt-in var(--duration-base) var(--ease-out) both;
+}
+
+.prompt__title {
+  font-family: var(--font-story);
+  font-size: var(--text-lg);
+  font-weight: 500;
+}
+
+.prompt__message {
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--bone-muted);
+  overflow-wrap: anywhere;
+}
+
+.prompt__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.prompt__action {
+  height: 30px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: none;
+  font-size: var(--text-sm);
+  color: var(--bone);
+  cursor: pointer;
+}
+
+.prompt__action:hover {
+  background: var(--ink-raised);
+}
+
+.prompt__action--danger {
+  margin-right: auto;
+  border-color: transparent;
+  color: var(--bone-muted);
+}
+
+.prompt__action--danger:hover {
+  background: var(--danger-wash);
+  color: var(--danger);
+}
+
+.prompt__action--primary {
+  border-color: var(--ochre);
+  background: var(--ochre);
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.prompt__action--primary:hover {
+  border-color: var(--ochre-text);
+  background: var(--ochre-text);
+}
+
+@keyframes prompt-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes prompt-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
   }
 }
