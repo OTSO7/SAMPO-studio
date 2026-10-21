@@ -25,8 +25,8 @@ const BEAT_LABEL = /^([^:.!?"“”„«»]{1,60}):\s+(.+)$/su;
 const MAX_LABEL_WORDS = 6;
 const QUOTE_START = /^["“”„«»]/u;
 
-const DEFAULT_TITLE = "Nimetön tarina";
-const DEFAULT_PHASE_TITLE = "Nimetön vaihe";
+const DEFAULT_TITLE = "Untitled";
+const DEFAULT_PHASE_TITLE = "Untitled phase";
 
 interface DraftPhase {
   title: string;

@@ -103,7 +103,7 @@ describe("parsePlainText edge cases", () => {
 
   it("collects text before the first heading into an untitled phase", () => {
     const story = parsePlainText("Alkusanat.\n\nVAIHE 1: Alku\n\nTeksti.");
-    expect(story.phases.map((phase) => phase.title)).toEqual(["Nimetön vaihe", "Alku"]);
+    expect(story.phases.map((phase) => phase.title)).toEqual(["Untitled phase", "Alku"]);
   });
 
   it("handles Windows line endings and joins wrapped lines", () => {
@@ -123,6 +123,6 @@ describe("parsePlainText edge cases", () => {
   it("returns an empty story for empty input", () => {
     const story = parsePlainText("   \n\n ");
     expect(story.phases).toEqual([]);
-    expect(story.title).toBe("Nimetön tarina");
+    expect(story.title).toBe("Untitled");
   });
 });

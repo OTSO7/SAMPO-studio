@@ -140,8 +140,8 @@ describe("suggestedFileName", () => {
     ["Routa", "Routa.sampo"],
     ["Routa: demo slice", "Routa - demo slice.sampo"],
     ['A/B\\C*D?"E"', "A - B - C - D - - E.sampo"],
-    ["  ...  ", "Nimetön tarina.sampo"],
-    ["", "Nimetön tarina.sampo"],
+    ["  ...  ", "Untitled.sampo"],
+    ["", "Untitled.sampo"],
   ])("turns %j into %j", (title, expected) => {
     expect(suggestedFileName(title)).toBe(expected);
   });

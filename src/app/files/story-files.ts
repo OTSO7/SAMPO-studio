@@ -61,7 +61,7 @@ export function suggestedFileName(title: string): string {
     .replace(INVALID_FILE_NAME_CHARACTERS, " - ")
     .replace(/\s+/gu, " ")
     .replace(/^[\s.-]+|[\s.-]+$/gu, "");
-  return `${base || "Nimetön tarina"}.${FILE_EXTENSION}`;
+  return `${base || "Untitled"}.${FILE_EXTENSION}`;
 }
 
 /** Save dialogs do not always append the extension the filter asked for. */

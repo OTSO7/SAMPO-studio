@@ -4,7 +4,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { FILE_EXTENSION } from "@core/file";
 import { FileError, type FileErrorCode, type FileHost } from "./file-host";
 
-const FILTERS = [{ name: "SAMPO-tarina", extensions: [FILE_EXTENSION] }];
+const FILTERS = [{ name: "SAMPO Story", extensions: [FILE_EXTENSION] }];
 
 const KNOWN_CODES: readonly FileErrorCode[] = ["not_found", "not_a_story_file", "too_large", "io"];
 
