@@ -1,0 +1,20 @@
+# Normalise line endings: store LF in the repo, check out as the platform default.
+* text=auto eol=lf
+
+# Binary assets must never be touched by git's text filters.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.icns binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.bank binary
+*.bundle binary
+
+# Generated lockfiles: keep diffs readable and avoid merge noise.
+pnpm-lock.yaml -diff
+Cargo.lock -diff
