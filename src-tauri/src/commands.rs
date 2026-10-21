@@ -34,3 +34,18 @@ pub fn read_story_file(path: PathBuf) -> Result<String, CommandError> {
 pub fn write_story_file(path: PathBuf, contents: String) -> Result<(), CommandError> {
     Ok(storage::write_story_atomic(&path, &contents)?)
 }
+
+#[tauri::command(async)]
+pub fn write_export_file(path: PathBuf, contents: String) -> Result<(), CommandError> {
+    Ok(storage::write_export_atomic(&path, &contents)?)
+}
+
+/// The story the app was launched with, e.g. after double-clicking a `.sampo` file.
+#[tauri::command]
+pub fn launch_file() -> Option<String> {
+    std::env::args_os()
+        .skip(1)
+        .map(PathBuf::from)
+        .find(|path| storage::is_story_path(path))
+        .map(|path| path.to_string_lossy().into_owned())
+}

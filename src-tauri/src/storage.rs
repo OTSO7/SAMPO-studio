@@ -1,4 +1,4 @@
-//! Reading and writing `.sampo` story files.
+//! Reading and writing `.sampo` story files, and writing exports for the team.
 //!
 //! Only the standard library is used here so the logic can be tested without a Tauri
 //! runtime. The command layer in `commands.rs` is a thin wrapper around these functions.
@@ -10,12 +10,17 @@ use std::path::{Path, PathBuf};
 
 pub const EXTENSION: &str = "sampo";
 
+/// Formats the app may export to. Anything else is refused, so a bug in the UI can never
+/// overwrite an arbitrary file.
+pub const EXPORT_EXTENSIONS: &[&str] = &["csv", "md", "txt"];
+
 /// Stories are text; anything this large is almost certainly the wrong file.
 const MAX_FILE_BYTES: u64 = 64 * 1024 * 1024;
 
 #[derive(Debug)]
 pub enum StorageError {
     NotAStoryFile(PathBuf),
+    UnsupportedExport(PathBuf),
     NotFound(PathBuf),
     TooLarge { path: PathBuf, bytes: u64 },
     Io { path: PathBuf, source: io::Error },
@@ -26,6 +31,7 @@ impl StorageError {
     pub fn code(&self) -> &'static str {
         match self {
             Self::NotAStoryFile(_) => "not_a_story_file",
+            Self::UnsupportedExport(_) => "unsupported_export",
             Self::NotFound(_) => "not_found",
             Self::TooLarge { .. } => "too_large",
             Self::Io { .. } => "io",
@@ -50,6 +56,12 @@ impl fmt::Display for StorageError {
             Self::NotAStoryFile(path) => {
                 write!(f, "{} is not a .{EXTENSION} file", path.display())
             }
+            Self::UnsupportedExport(path) => write!(
+                f,
+                "{} cannot be exported to; use .{}",
+                path.display(),
+                EXPORT_EXTENSIONS.join(", .")
+            ),
             Self::NotFound(path) => write!(f, "{} does not exist", path.display()),
             Self::TooLarge { path, bytes } => write!(
                 f,
@@ -73,6 +85,10 @@ impl std::error::Error for StorageError {
 }
 
 pub type Result<T> = std::result::Result<T, StorageError>;
+
+pub fn is_story_path(path: &Path) -> bool {
+    has_extension(path, &[EXTENSION])
+}
 
 pub fn read_story(path: &Path) -> Result<String> {
     ensure_story_extension(path)?;
@@ -98,14 +114,25 @@ pub fn read_story(path: &Path) -> Result<String> {
 /// and Linux. The previous version is kept next to it as `<name>.sampo.bak`.
 pub fn write_story_atomic(path: &Path, contents: &str) -> Result<()> {
     ensure_story_extension(path)?;
+    write_atomic(path, contents, true)
+}
 
+/// Writes an export (CSV, Markdown) the same crash-safe way, without keeping a backup.
+pub fn write_export_atomic(path: &Path, contents: &str) -> Result<()> {
+    if !has_extension(path, EXPORT_EXTENSIONS) {
+        return Err(StorageError::UnsupportedExport(path.to_path_buf()));
+    }
+    write_atomic(path, contents, false)
+}
+
+fn write_atomic(path: &Path, contents: &str, keep_backup: bool) -> Result<()> {
     let temp = sibling_with_suffix(path, "tmp");
     write_synced(&temp, contents.as_bytes()).inspect_err(|_| {
         // Best effort: a stale temp file is harmless, so its removal may fail silently.
         let _ = fs::remove_file(&temp);
     })?;
 
-    if path.exists() {
+    if keep_backup && path.exists() {
         let backup = sibling_with_suffix(path, "bak");
         fs::copy(path, &backup).map_err(|err| StorageError::io(&backup, err))?;
     }
@@ -116,12 +143,14 @@ pub fn write_story_atomic(path: &Path, contents: &str) -> Result<()> {
     })
 }
 
-fn ensure_story_extension(path: &Path) -> Result<()> {
-    let is_story = path
-        .extension()
-        .is_some_and(|ext| ext.eq_ignore_ascii_case(EXTENSION));
+fn has_extension(path: &Path, allowed: &[&str]) -> bool {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| allowed.iter().any(|a| ext.eq_ignore_ascii_case(a)))
+}
 
-    if is_story {
+fn ensure_story_extension(path: &Path) -> Result<()> {
+    if is_story_path(path) {
         Ok(())
     } else {
         Err(StorageError::NotAStoryFile(path.to_path_buf()))
@@ -237,6 +266,34 @@ mod tests {
             assert_eq!(err.code(), "not_a_story_file", "{name}");
         }
         assert!(fs::read_dir(&dir.0).unwrap().next().is_none());
+    }
+
+    #[test]
+    fn writes_exports_without_a_backup() {
+        let dir = TempDir::new();
+        let path = dir.path("lines.csv");
+
+        write_export_atomic(&path, "a").unwrap();
+        write_export_atomic(&path, "b").unwrap();
+
+        assert_eq!(fs::read_to_string(&path).unwrap(), "b");
+        assert!(!dir.path("lines.csv.bak").exists());
+    }
+
+    #[test]
+    fn refuses_to_export_over_other_files() {
+        let dir = TempDir::new();
+
+        for name in ["story.sampo", "notes.exe", "readme"] {
+            let err = write_export_atomic(&dir.path(name), "x").unwrap_err();
+            assert_eq!(err.code(), "unsupported_export", "{name}");
+        }
+    }
+
+    #[test]
+    fn recognises_story_paths() {
+        assert!(is_story_path(Path::new("D:/Tarinat/Routa.SAMPO")));
+        assert!(!is_story_path(Path::new("D:/Tarinat/Routa.sampo.bak")));
     }
 
     #[test]
