@@ -1,0 +1,5 @@
+export type { FileErrorCode, FileHost } from "./file-host";
+export { FileError } from "./file-host";
+export type { OpenResult, SaveResult } from "./story-files";
+export { StoryFiles, suggestedFileName } from "./story-files";
+export { tauriFileHost } from "./tauri-host";
