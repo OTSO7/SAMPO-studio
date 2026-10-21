@@ -1,0 +1,74 @@
+/*
+ * Routa design tokens, shared with the game's HUD so SAMPO looks like it belongs to the game.
+ * Proportions follow the HUD: 60 % ink, 30 % bone, 10 % ochre.
+ */
+:root {
+  /* Palette */
+  --ink: #090a0b;
+  --ink-raised: #111315;
+  --ink-overlay: #181b1e;
+  --bone: #e9e3d5;
+  --bone-muted: rgb(233 227 213 / 62%);
+  --bone-faint: rgb(233 227 213 / 38%);
+  --hairline: rgb(233 227 213 / 12%);
+  --hairline-strong: rgb(233 227 213 / 22%);
+
+  --ochre: #a96609;
+  /* Same hue, light enough for small text on ink (9.7:1). Plain ochre is only 4.3:1. */
+  --ochre-text: #f0a742;
+  --ochre-wash: rgb(169 102 9 / 16%);
+
+  /* Reserved for anomalies so it never competes with the accent. */
+  --signal: #81c6cf;
+  --signal-wash: rgb(129 198 207 / 14%);
+  /* Only for errors and destructive actions. */
+  --danger: #ce4a3a;
+  --danger-wash: rgb(206 74 58 / 16%);
+
+  /* Typography */
+  --font-ui: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-story: "Source Serif 4 Variable", "Source Serif 4", Georgia, serif;
+
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-display: 2.75rem;
+
+  --tracking-label: 0.14em;
+  --tracking-wordmark: 0.32em;
+
+  /* Spacing on a 4 px grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Shape: the HUD is angular, so radii stay small. */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 360ms;
+
+  /* Layout */
+  --titlebar-height: 44px;
+  --statusbar-height: 28px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}

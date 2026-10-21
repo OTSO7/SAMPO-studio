@@ -1,0 +1,118 @@
+.shell {
+  display: grid;
+  grid-template-rows: var(--titlebar-height) 1fr var(--statusbar-height);
+  height: 100%;
+}
+
+.shell__titlebar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* A short ochre stroke under the wordmark, echoing the HUD's marker lines. */
+.shell__titlebar::after {
+  content: "";
+  position: absolute;
+  left: var(--space-4);
+  bottom: -1px;
+  width: 72px;
+  height: 1px;
+  background: var(--ochre);
+}
+
+.shell__wordmark {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wordmark);
+}
+
+.shell__wordmark-mark {
+  width: 7px;
+  height: 7px;
+  background: var(--ochre);
+  transform: rotate(45deg);
+}
+
+.shell__main {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  overflow: auto;
+}
+
+.shell__statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-4);
+  border-top: 1px solid var(--hairline);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--bone-faint);
+}
+
+.start {
+  display: grid;
+  gap: var(--space-5);
+  width: 320px;
+  animation: start-in var(--duration-slow) var(--ease-out) both;
+}
+
+.start__eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ochre-text);
+}
+
+.start__actions {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--hairline);
+}
+
+.start__action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--hairline);
+  font-size: var(--text-sm);
+  color: var(--bone-muted);
+}
+
+.start__keys {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.start__keys kbd {
+  min-width: 22px;
+  padding: 1px var(--space-1);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-align: center;
+  color: var(--bone-faint);
+}
+
+@keyframes start-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}

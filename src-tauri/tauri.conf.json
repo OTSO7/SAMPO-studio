@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "sampo-studio",
+  "productName": "SAMPO Studio",
   "version": "0.1.0",
   "identifier": "fi.routa.sampo",
   "build": {
@@ -12,9 +12,13 @@
   "app": {
     "windows": [
       {
-        "title": "sampo-studio",
-        "width": 800,
-        "height": 600
+        "title": "SAMPO Studio",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 640,
+        "center": true,
+        "backgroundColor": "#090A0B"
       }
     ],
     "security": {
