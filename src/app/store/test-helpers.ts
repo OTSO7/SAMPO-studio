@@ -2,31 +2,37 @@ import { FileError, StoryFiles, type FileHost } from "../files";
 import type { Timers } from "./autosave";
 
 /**
- * File host whose writes can be held open, so tests can make edits while a save is in
+ * In-memory file host whose writes can be held open, so tests can make edits while a save is in
  * flight and then decide when it completes.
  */
 export class ControlledHost implements FileHost {
   readonly writes: { path: string; contents: string }[] = [];
+  readonly files = new Map<string, string>();
+  openAnswer: string | null = null;
   saveAnswer: string | null = null;
   holdWrites = false;
   failWith: FileError | null = null;
   private readonly held: (() => void)[] = [];
 
   pickOpenPath() {
-    return Promise.resolve(null);
+    return Promise.resolve(this.openAnswer);
   }
 
   pickSavePath() {
     return Promise.resolve(this.saveAnswer);
   }
 
-  readText(): Promise<string> {
-    return Promise.reject(new FileError("not_found", "not used"));
+  readText(path: string): Promise<string> {
+    const contents = this.files.get(path);
+    return contents === undefined
+      ? Promise.reject(new FileError("not_found", `${path} does not exist`))
+      : Promise.resolve(contents);
   }
 
   writeText(path: string, contents: string) {
     if (this.failWith !== null) return Promise.reject(this.failWith);
     this.writes.push({ path, contents });
+    this.files.set(path, contents);
     if (!this.holdWrites) return Promise.resolve();
     return new Promise<void>((resolve) => this.held.push(resolve));
   }

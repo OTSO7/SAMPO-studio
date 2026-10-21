@@ -1,18 +1,22 @@
 import { describe, expect, it } from "vitest";
 
-import { parsePlainText } from "@core/parse";
+import { sampleStory } from "@core/testing/sample-story";
 import { FileError } from "../files";
 import {
+  canRedo,
+  canUndo,
   createDocumentStore,
   editStory,
   isDirty,
   loadDocument,
+  redo,
+  undo,
   type DocumentState,
 } from "./document-store";
 import { saveDocument } from "./save-document";
 import { ControlledHost, settle, storyFilesFor } from "./test-helpers";
 
-const story = parsePlainText("VAIHE 1: Alku\n\nTeksti.", { title: "Routa" });
+const story = sampleStory();
 const rename = (title: string) => (s: typeof story) => ({ ...s, title });
 
 describe("createStore", () => {
@@ -138,5 +142,76 @@ describe("saveDocument", () => {
     const host = new ControlledHost();
     expect(await saveDocument(createDocumentStore(), storyFilesFor(host))).toBe("nothing-to-save");
     expect(host.writes).toEqual([]);
+  });
+});
+
+describe("undo and redo", () => {
+  function opened() {
+    const store = createDocumentStore();
+    loadDocument(store, story, "D:/Routa.sampo");
+    return store;
+  }
+
+  it("steps back and forward through edits", () => {
+    const store = opened();
+    editStory(store, rename("A"));
+    editStory(store, rename("B"));
+
+    undo(store);
+    expect(store.getState().story?.title).toBe("A");
+    undo(store);
+    expect(store.getState().story?.title).toBe(story.title);
+    expect(canUndo(store.getState())).toBe(false);
+
+    redo(store);
+    expect(store.getState().story?.title).toBe("A");
+  });
+
+  it("collapses edits in the same group into one step", () => {
+    const store = opened();
+    editStory(store, rename("R"), { group: "title" });
+    editStory(store, rename("Ro"), { group: "title" });
+    editStory(store, rename("Rou"), { group: "title" });
+
+    undo(store);
+    expect(store.getState().story?.title).toBe(story.title);
+  });
+
+  it("starts a new step when the group changes", () => {
+    const store = opened();
+    editStory(store, rename("A"), { group: "title" });
+    editStory(store, rename("B"), { group: "other" });
+
+    undo(store);
+    expect(store.getState().story?.title).toBe("A");
+  });
+
+  it("clears redo after a new edit", () => {
+    const store = opened();
+    editStory(store, rename("A"));
+    undo(store);
+    editStory(store, rename("B"));
+    expect(canRedo(store.getState())).toBe(false);
+  });
+
+  it("counts undo as a change that needs saving", () => {
+    const store = opened();
+    editStory(store, rename("A"));
+    undo(store);
+    expect(isDirty(store.getState())).toBe(true);
+  });
+
+  it("ignores edits that change nothing", () => {
+    const store = opened();
+    editStory(store, (s) => s);
+    expect(canUndo(store.getState())).toBe(false);
+    expect(isDirty(store.getState())).toBe(false);
+  });
+
+  it("forgets history when another story is loaded", () => {
+    const store = opened();
+    editStory(store, rename("A"));
+    loadDocument(store, story, null);
+    expect(canUndo(store.getState())).toBe(false);
   });
 });

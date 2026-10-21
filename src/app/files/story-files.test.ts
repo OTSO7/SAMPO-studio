@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import { serializeStory } from "@core/file";
-import { parsePlainText } from "@core/parse";
+import { assembleStory } from "@core/import";
 import { FileError, type FileHost } from "./file-host";
 import { StoryFiles, suggestedFileName } from "./story-files";
 
-const story = parsePlainText('VAIHE 1: Alku\n\nElias: "Hei."', { title: "Routa: demo" });
+const story = assembleStory([
+  { role: "title", text: "Routa: demo" },
+  { role: "phase", text: "Alku" },
+  { role: "line", speaker: "Elias", text: "Hei." },
+]);
 const NOW = new Date("2026-10-21T10:00:00.000Z");
 
 /** In-memory host that answers dialogs from a script and records what was asked. */

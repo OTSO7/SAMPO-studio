@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { parsePlainText } from "@core/parse";
+import { sampleStory } from "@core/testing/sample-story";
 import { startAutosave } from "./autosave";
 import { createDocumentStore, editStory, isDirty, loadDocument } from "./document-store";
 import { ControlledHost, ManualTimers, settle, storyFilesFor } from "./test-helpers";
 
-const story = parsePlainText("VAIHE 1: Alku\n\nTeksti.", { title: "Routa" });
+const story = sampleStory();
 const rename = (title: string) => (s: typeof story) => ({ ...s, title });
 
 function setup(path: string | null = "D:/Routa.sampo") {

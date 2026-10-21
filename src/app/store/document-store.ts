@@ -15,6 +15,11 @@ export interface DocumentState {
   readonly revision: number;
   readonly savedRevision: number;
   readonly saveStatus: SaveStatus;
+  /** Earlier versions of the story, most recent last. */
+  readonly past: readonly Story[];
+  readonly future: readonly Story[];
+  /** Edits sharing a group (typing in one field) collapse into a single undo step. */
+  readonly editGroup: string | null;
 }
 
 export type DocumentStore = Store<DocumentState>;
@@ -25,13 +30,24 @@ export const EMPTY_DOCUMENT: DocumentState = {
   revision: 0,
   savedRevision: 0,
   saveStatus: { kind: "idle" },
+  past: [],
+  future: [],
+  editGroup: null,
 };
+
+const HISTORY_LIMIT = 100;
 
 export function createDocumentStore(initial: DocumentState = EMPTY_DOCUMENT): DocumentStore {
   return createStore(initial);
 }
 
 export const isDirty = (state: DocumentState): boolean => state.revision !== state.savedRevision;
+
+/** Closes the story and returns to the start screen. Callers make sure nothing is lost. */
+export function closeDocument(store: DocumentStore): void {
+  const revision = store.getState().revision + 1;
+  store.setState({ ...EMPTY_DOCUMENT, revision, savedRevision: revision });
+}
 
 /** Replaces the open document, e.g. after opening a file or importing pasted text. */
 export function loadDocument(store: DocumentStore, story: Story, path: string | null): void {
@@ -43,13 +59,68 @@ export function loadDocument(store: DocumentStore, story: Story, path: string | 
     // An imported story has never been written anywhere, so it starts out unsaved.
     savedRevision: path === null ? revision - 1 : revision,
     saveStatus: { kind: "idle" },
+    past: [],
+    future: [],
+    editGroup: null,
   });
 }
 
-export function editStory(store: DocumentStore, recipe: (story: Story) => Story): void {
-  store.setState((state) =>
-    state.story === null ? {} : { story: recipe(state.story), revision: state.revision + 1 },
-  );
+export interface EditOptions {
+  /** Consecutive edits with the same group undo together, e.g. `text:<blockId>`. */
+  readonly group?: string;
+}
+
+export function editStory(
+  store: DocumentStore,
+  recipe: (story: Story) => Story,
+  options: EditOptions = {},
+): void {
+  store.setState((state) => {
+    if (state.story === null) return {};
+    const story = recipe(state.story);
+    if (story === state.story) return {};
+
+    const group = options.group ?? null;
+    const continues = group !== null && group === state.editGroup;
+    return {
+      story,
+      revision: state.revision + 1,
+      past: continues ? state.past : [...state.past, state.story].slice(-HISTORY_LIMIT),
+      future: [],
+      editGroup: group,
+    };
+  });
+}
+
+export const canUndo = (state: DocumentState): boolean => state.past.length > 0;
+export const canRedo = (state: DocumentState): boolean => state.future.length > 0;
+
+export function undo(store: DocumentStore): void {
+  store.setState((state) => {
+    const previous = state.past.at(-1);
+    if (previous === undefined || state.story === null) return {};
+    return {
+      story: previous,
+      past: state.past.slice(0, -1),
+      future: [state.story, ...state.future],
+      revision: state.revision + 1,
+      editGroup: null,
+    };
+  });
+}
+
+export function redo(store: DocumentStore): void {
+  store.setState((state) => {
+    const [next, ...rest] = state.future;
+    if (next === undefined || state.story === null) return {};
+    return {
+      story: next,
+      past: [...state.past, state.story],
+      future: rest,
+      revision: state.revision + 1,
+      editGroup: null,
+    };
+  });
 }
 
 export function markSaving(store: DocumentStore): void {
