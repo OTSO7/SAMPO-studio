@@ -44,14 +44,12 @@ export function parsePlainText(source: string, options: ParseOptions = {}): Stor
   const ids = options.ids ?? newId;
   const speakers = new SpeakerRegistry(ids, options.entities ?? []);
 
-  const phases = collectPhases(source).map(
-    (draft): Phase => ({
-      id: ids.phase(),
-      title: draft.title,
-      ...(draft.location === undefined ? {} : { location: draft.location }),
-      beats: draft.paragraphs.map((paragraph) => toBeat(paragraph, ids, speakers)),
-    }),
-  );
+  const phases = collectPhases(source).map((draft): Phase => ({
+    id: ids.phase(),
+    title: draft.title,
+    ...(draft.location === undefined ? {} : { location: draft.location }),
+    beats: draft.paragraphs.map((paragraph) => toBeat(paragraph, ids, speakers)),
+  }));
 
   return {
     id: ids.story(),
