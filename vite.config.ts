@@ -1,12 +1,24 @@
+/// <reference types="vitest/config" />
+import { fileURLToPath, URL } from "node:url";
+import process from "node:process";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-// @ts-expect-error type error without @types/node package
-import process from "node:process";
-const host = process.env.TAURI_DEV_HOST;
+
+const host = process.env["TAURI_DEV_HOST"];
+
+const fromSrc = (path: string) => fileURLToPath(new URL(`./src/${path}`, import.meta.url));
 
 // https://vite.dev/config/
 export default defineConfig(() => ({
   plugins: [react()],
+
+  resolve: {
+    alias: {
+      "@core": fromSrc("core"),
+      "@app": fromSrc("app"),
+      "@ui": fromSrc("ui"),
+    },
+  },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
@@ -28,5 +40,11 @@ export default defineConfig(() => ({
       // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
     },
+  },
+
+  test: {
+    include: ["src/**/*.test.{ts,tsx}"],
+    environment: "node",
+    passWithNoTests: true,
   },
 }));
