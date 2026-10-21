@@ -28,8 +28,10 @@ import { usePanelWidth } from "@ui/hooks/use-panel-width";
 import { EditableText } from "@ui/primitives/EditableText";
 import { useServices } from "@ui/services/use-services";
 import { BeatCard } from "./BeatCard";
+import { ExportMenu } from "./ExportMenu";
 import { Inspector } from "./Inspector";
 import { insertCard, type InsertKind } from "./insert-card";
+import { PacingPanel } from "./PacingPanel";
 import { PhaseColumn } from "./PhaseColumn";
 import { StorySettings } from "./StorySettings";
 import { buildLookup } from "./story-lookup";
@@ -54,7 +56,14 @@ export function Board({ story }: { story: Story }) {
   const [selectedId, setSelectedId] = useState<BeatId | null>(null);
   const [focusOnOpen, setFocusOnOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showPacing, setShowPacing] = useState(() => readFlag("sampo.showPacing", true));
   const lookup = useMemo(() => buildLookup(story), [story]);
+  const togglePacing = useCallback(() => {
+    setShowPacing((current) => {
+      writeFlag("sampo.showPacing", !current);
+      return !current;
+    });
+  }, []);
   const panel = usePanelWidth({
     storageKey: "sampo.inspectorWidth",
     initial: 440,
@@ -261,15 +270,26 @@ export function Board({ story }: { story: Story }) {
             {story.phases.length} {story.phases.length === 1 ? "phase" : "phases"} · {cards}{" "}
             {cards === 1 ? "card" : "cards"} · {lines} {lines === 1 ? "line" : "lines"}
           </p>
-          <button
-            type="button"
-            className="board__settings"
-            onClick={() => {
-              setSettingsOpen(true);
-            }}
-          >
-            Card types &amp; cast
-          </button>
+          <div className="board__tools">
+            <button
+              type="button"
+              className="board__tool"
+              aria-pressed={showPacing}
+              onClick={togglePacing}
+            >
+              Pacing
+            </button>
+            <button
+              type="button"
+              className="board__tool"
+              onClick={() => {
+                setSettingsOpen(true);
+              }}
+            >
+              Card types &amp; cast
+            </button>
+            <ExportMenu />
+          </div>
         </header>
 
         <div ref={scrollerRef} className={`board__scroller ${dragging ? "is-dragging" : ""}`}>
@@ -306,6 +326,20 @@ export function Board({ story }: { story: Story }) {
             </button>
           </div>
         </div>
+
+        {cards > 0 && (
+          <PacingPanel
+            story={story}
+            open={showPacing}
+            selectedBeatId={selectedId}
+            edit={edit}
+            onToggle={togglePacing}
+            onSelect={(beatId) => {
+              setFocusOnOpen(false);
+              setSelectedId(beatId);
+            }}
+          />
+        )}
 
         <footer className="board__hints">
           <span>Drag cards or Alt + arrows to reorder · Hover between cards to insert</span>
@@ -358,4 +392,21 @@ export function Board({ story }: { story: Story }) {
       )}
     </div>
   );
+}
+
+function readFlag(key: string, fallback: boolean): boolean {
+  try {
+    const value = window.localStorage.getItem(key);
+    return value === null ? fallback : value === "1";
+  } catch {
+    return fallback;
+  }
+}
+
+function writeFlag(key: string, value: boolean): void {
+  try {
+    window.localStorage.setItem(key, value ? "1" : "0");
+  } catch {
+    // Not remembered; harmless.
+  }
 }

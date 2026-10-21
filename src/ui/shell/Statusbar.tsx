@@ -2,8 +2,6 @@ import { isDirty, type DocumentState } from "@app/store";
 import { useStore } from "@ui/hooks/use-store";
 import { useServices } from "@ui/services/use-services";
 
-const APP_VERSION = "0.1.0";
-
 const timeFormat = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
 
 function fileLabel(state: DocumentState): string {
@@ -33,7 +31,7 @@ export function Statusbar() {
             {saveLabel}
           </span>
         )}
-        <span>v{APP_VERSION}</span>
+        <span>v{__APP_VERSION__}</span>
       </span>
     </footer>
   );

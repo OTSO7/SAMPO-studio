@@ -12,6 +12,11 @@ const fromSrc = (path: string) => fileURLToPath(new URL(`./src/${path}`, import.
 export default defineConfig(() => ({
   plugins: [react()],
 
+  define: {
+    // Set by pnpm from package.json when any script runs.
+    __APP_VERSION__: JSON.stringify(process.env["npm_package_version"] ?? "dev"),
+  },
+
   resolve: {
     alias: {
       "@core": fromSrc("core"),

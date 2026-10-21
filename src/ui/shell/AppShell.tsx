@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { openLaunchFile } from "@app/commands";
+
 import { Board } from "@ui/board/Board";
 import { FocusView } from "@ui/focus/FocusView";
 import { useStore } from "@ui/hooks/use-store";
@@ -18,6 +20,11 @@ export function AppShell() {
   const story = useStore(deps.document, (state) => state.story);
   const [focusing, setFocusing] = useState(false);
   useShortcuts(deps);
+
+  // Double-clicking a .sampo file starts the app with that file.
+  useEffect(() => {
+    void openLaunchFile(deps);
+  }, [deps]);
 
   const exitFocus = useCallback(() => {
     setFocusing(false);

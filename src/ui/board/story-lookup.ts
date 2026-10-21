@@ -15,8 +15,4 @@ export function buildLookup(story: Story): StoryLookup {
   };
 }
 
-/** Rough spoken length of a line, for pacing and voice recording estimates. */
-export function estimateSeconds(text: string): number {
-  const words = text.trim().split(/\s+/u).filter(Boolean).length;
-  return words === 0 ? 0 : Math.max(1, Math.round(words / 2.5));
-}
+export { estimateSeconds } from "@core/export";
