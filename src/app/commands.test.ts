@@ -4,6 +4,8 @@ import { serializeStory } from "@core/file";
 import { sampleStory } from "@core/testing/sample-story";
 import {
   closeStory,
+  exportStory,
+  openLaunchFile,
   importScript,
   newStory,
   openStory,
@@ -221,5 +223,53 @@ describe("closeStory", () => {
     expect(await closeStory(deps)).toBe(false);
 
     expect(deps.document.getState().story).toBe(existing);
+  });
+});
+
+describe("exportStory", () => {
+  it("exports voice lines as CSV and reports how many", async () => {
+    const { host, deps } = setup();
+    host.exportAnswer = "D:/lines.csv";
+    loadDocument(deps.document, existing, null);
+
+    expect(await exportStory(deps, "voice-lines")).toBe(true);
+
+    expect(host.files.get("D:/lines.csv")).toContain("VO_VARTIJA_");
+    expect(deps.notices.getState().notice?.title).toBe("2 lines exported to lines.csv");
+  });
+
+  it("exports the script as Markdown", async () => {
+    const { host, deps } = setup();
+    host.exportAnswer = "D:/script";
+    loadDocument(deps.document, existing, null);
+
+    await exportStory(deps, "script");
+
+    expect(host.files.get("D:/script.md")).toContain("# Majakka");
+  });
+
+  it("explains when there is no dialogue", async () => {
+    const { deps } = setup();
+    loadDocument(deps.document, { ...existing, phases: [] }, null);
+
+    expect(await exportStory(deps, "voice-lines")).toBe(false);
+    expect(deps.notices.getState().notice?.tone).toBe("info");
+  });
+});
+
+describe("openLaunchFile", () => {
+  it("opens the file the app was started with", async () => {
+    const { host, deps } = setup();
+    host.launch = "D:/Routa.sampo";
+    host.files.set("D:/Routa.sampo", serializeStory(existing));
+
+    expect(await openLaunchFile(deps)).toBe(true);
+    expect(deps.document.getState().path).toBe("D:/Routa.sampo");
+  });
+
+  it("does nothing when started normally", async () => {
+    const { deps } = setup();
+    expect(await openLaunchFile(deps)).toBe(false);
+    expect(deps.document.getState().story).toBeNull();
   });
 });

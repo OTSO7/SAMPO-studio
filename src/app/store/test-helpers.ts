@@ -37,6 +37,23 @@ export class ControlledHost implements FileHost {
     return new Promise<void>((resolve) => this.held.push(resolve));
   }
 
+  exportAnswer: string | null = null;
+  launch: string | null = null;
+
+  pickExportPath() {
+    return Promise.resolve(this.exportAnswer);
+  }
+
+  writeExport(path: string, contents: string) {
+    this.writes.push({ path, contents });
+    this.files.set(path, contents);
+    return Promise.resolve();
+  }
+
+  launchPath() {
+    return Promise.resolve(this.launch);
+  }
+
   releaseWrites() {
     this.held.splice(0).forEach((resolve) => {
       resolve();

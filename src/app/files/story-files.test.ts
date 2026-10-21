@@ -39,6 +39,23 @@ class FakeHost implements FileHost {
     this.files.set(path, contents);
     return Promise.resolve();
   }
+
+  exportAnswer: string | null = null;
+  readonly exportNames: string[] = [];
+
+  pickExportPath(suggestedName: string) {
+    this.exportNames.push(suggestedName);
+    return Promise.resolve(this.exportAnswer);
+  }
+
+  writeExport(path: string, contents: string) {
+    this.files.set(path, contents);
+    return Promise.resolve();
+  }
+
+  launchPath() {
+    return Promise.resolve(null);
+  }
 }
 
 function setup() {
@@ -148,5 +165,25 @@ describe("suggestedFileName", () => {
     ["", "Untitled.sampo"],
   ])("turns %j into %j", (title, expected) => {
     expect(suggestedFileName(title)).toBe(expected);
+  });
+});
+
+describe("StoryFiles.export", () => {
+  it("suggests a name from the title and adds the extension", async () => {
+    const { host, files } = setup();
+    host.exportAnswer = "D:/Routa - voice lines";
+
+    expect(await files.export("a,b\n", "Routa: voice lines", "csv")).toEqual({
+      status: "exported",
+      path: "D:/Routa - voice lines.csv",
+    });
+    expect(host.exportNames).toEqual(["Routa - voice lines.csv"]);
+    expect(host.files.get("D:/Routa - voice lines.csv")).toBe("a,b\n");
+  });
+
+  it("writes nothing when cancelled", async () => {
+    const { host, files } = setup();
+    expect(await files.export("x", "Routa", "md")).toEqual({ status: "cancelled" });
+    expect(host.files.size).toBe(0);
   });
 });
