@@ -24,7 +24,9 @@ import {
   type Phase,
   type Story,
 } from "@core/model";
+import type { SearchResult } from "@core/search";
 import { usePanelWidth } from "@ui/hooks/use-panel-width";
+import { LinesView } from "@ui/lines/LinesView";
 import { EditableText } from "@ui/primitives/EditableText";
 import { useServices } from "@ui/services/use-services";
 import { BeatCard } from "./BeatCard";
@@ -33,6 +35,7 @@ import { Inspector } from "./Inspector";
 import { insertCard, type InsertKind } from "./insert-card";
 import { PacingPanel } from "./PacingPanel";
 import { PhaseColumn } from "./PhaseColumn";
+import { QuickFind } from "./QuickFind";
 import { StorySettings } from "./StorySettings";
 import { buildLookup } from "./story-lookup";
 import { useCardDrag, type DropTarget } from "./use-card-drag";
@@ -57,6 +60,72 @@ export function Board({ story }: { story: Story }) {
   const [focusOnOpen, setFocusOnOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showPacing, setShowPacing] = useState(() => readFlag("sampo.showPacing", true));
+  const [view, setView] = useState<"board" | "lines">(() =>
+    readText("sampo.view") === "lines" ? "lines" : "board",
+  );
+  const [zoom, setZoom] = useState(() => clampZoom(Number(readText("sampo.zoom") ?? "1")));
+  const [finding, setFinding] = useState(false);
+
+  const changeView = useCallback((next: "board" | "lines") => {
+    setView(next);
+    writeText("sampo.view", next);
+  }, []);
+
+  const changeZoom = useCallback((next: number) => {
+    const clamped = clampZoom(next);
+    setZoom(clamped);
+    writeText("sampo.zoom", String(clamped));
+  }, []);
+
+  const openCard = useCallback(
+    (beatId: BeatId) => {
+      changeView("board");
+      setFocusOnOpen(false);
+      setSelectedId(beatId);
+    },
+    [changeView],
+  );
+
+  const pickResult = useCallback(
+    (result: SearchResult) => {
+      if (result.beatId !== undefined) {
+        openCard(result.beatId);
+        return;
+      }
+      changeView("board");
+      requestAnimationFrame(() => {
+        document
+          .querySelector(`[data-phase-id="${result.phaseId}"]`)
+          ?.scrollIntoView({ inline: "start", block: "nearest", behavior: "smooth" });
+      });
+    },
+    [openCard, changeView],
+  );
+
+  // Ctrl+K / Ctrl+F find, Ctrl + / - / 0 zoom. These work even while typing.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      const key = event.key.toLowerCase();
+      if (key === "k" || key === "f") {
+        event.preventDefault();
+        setFinding(true);
+      } else if (key === "=" || key === "+") {
+        event.preventDefault();
+        changeZoom(zoom + ZOOM_STEP);
+      } else if (key === "-") {
+        event.preventDefault();
+        changeZoom(zoom - ZOOM_STEP);
+      } else if (key === "0") {
+        event.preventDefault();
+        changeZoom(1);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [zoom, changeZoom]);
   const lookup = useMemo(() => buildLookup(story), [story]);
   const togglePacing = useCallback(() => {
     setShowPacing((current) => {
@@ -173,7 +242,7 @@ export function Board({ story }: { story: Story }) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (isTyping(event.target) || event.ctrlKey || event.metaKey || dragging !== null) return;
-      if (settingsOpen) return;
+      if (settingsOpen || finding || view !== "board") return;
       const current = selectedId === null ? null : findBeat(story, selectedId);
 
       if (current === null) {
@@ -229,7 +298,7 @@ export function Board({ story }: { story: Story }) {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [story, selectedId, dragging, edit, settingsOpen]);
+  }, [story, selectedId, dragging, edit, settingsOpen, finding, view]);
 
   useEffect(() => {
     if (selectedId === null) return;
@@ -270,15 +339,83 @@ export function Board({ story }: { story: Story }) {
             {story.phases.length} {story.phases.length === 1 ? "phase" : "phases"} · {cards}{" "}
             {cards === 1 ? "card" : "cards"} · {lines} {lines === 1 ? "line" : "lines"}
           </p>
+          <div className="view-switch" role="tablist" aria-label="View">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === "board"}
+              onClick={() => {
+                changeView("board");
+              }}
+            >
+              Board
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === "lines"}
+              onClick={() => {
+                changeView("lines");
+              }}
+            >
+              Lines
+              {lines > 0 && <span className="view-switch__count">{lines}</span>}
+            </button>
+          </div>
           <div className="board__tools">
             <button
               type="button"
-              className="board__tool"
-              aria-pressed={showPacing}
-              onClick={togglePacing}
+              className="board__tool board__tool--find"
+              onClick={() => {
+                setFinding(true);
+              }}
             >
-              Pacing
+              Find <kbd className="kbd">Ctrl K</kbd>
             </button>
+            {view === "board" && (
+              <>
+                <div className="zoom" role="group" aria-label="Zoom">
+                  <button
+                    type="button"
+                    aria-label="Zoom out"
+                    disabled={zoom <= ZOOM_MIN}
+                    onClick={() => {
+                      changeZoom(zoom - ZOOM_STEP);
+                    }}
+                  >
+                    −
+                  </button>
+                  <button
+                    type="button"
+                    className="zoom__value"
+                    title="Reset zoom"
+                    onClick={() => {
+                      changeZoom(1);
+                    }}
+                  >
+                    {Math.round(zoom * 100)}%
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Zoom in"
+                    disabled={zoom >= ZOOM_MAX}
+                    onClick={() => {
+                      changeZoom(zoom + ZOOM_STEP);
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className="board__tool"
+                  aria-pressed={showPacing}
+                  onClick={togglePacing}
+                >
+                  Pacing
+                </button>
+              </>
+            )}
             <button
               type="button"
               className="board__tool"
@@ -292,42 +429,63 @@ export function Board({ story }: { story: Story }) {
           </div>
         </header>
 
-        <div ref={scrollerRef} className={`board__scroller ${dragging ? "is-dragging" : ""}`}>
-          <div className="board__columns">
-            {story.phases.map((phase, index) => (
-              <PhaseColumn
-                key={phase.id}
-                phase={phase}
-                number={index + 1}
-                lookup={lookup}
-                selectedBeatId={selectedId}
-                dragging={dragging}
-                dropTarget={dropTarget}
-                onSelect={select}
-                onRename={rename}
-                onRelocate={relocate}
-                onSplitAt={splitAt}
-                onMergeWithPrevious={index === 0 ? null : mergeWithPrevious}
-                onDelete={(phase) => {
-                  void removePhase(phase);
-                }}
-                onInsert={insert}
-                onCardPointerDown={cardPointerDown}
-              />
-            ))}
+        {view === "lines" ? (
+          <LinesView story={story} edit={edit} onOpenCard={openCard} />
+        ) : story.phases.length === 0 ? (
+          <div className="board__empty">
+            <p className="board__empty-title">This story is empty</p>
+            <p className="board__empty-body">
+              Start with a phase, such as an act, a chapter or a level, and add cards to it. Or
+              paste a whole script with <kbd className="kbd">Ctrl V</kbd> to start from your text.
+            </p>
             <button
               type="button"
-              className="board__add-phase"
+              className="button button--primary"
               onClick={() => {
                 edit((s) => addPhase(s));
               }}
             >
-              + Phase
+              Add the first phase
             </button>
           </div>
-        </div>
+        ) : (
+          <div ref={scrollerRef} className={`board__scroller ${dragging ? "is-dragging" : ""}`}>
+            <div className="board__columns" style={{ zoom }}>
+              {story.phases.map((phase, index) => (
+                <PhaseColumn
+                  key={phase.id}
+                  phase={phase}
+                  number={index + 1}
+                  lookup={lookup}
+                  selectedBeatId={selectedId}
+                  dragging={dragging}
+                  dropTarget={dropTarget}
+                  onSelect={select}
+                  onRename={rename}
+                  onRelocate={relocate}
+                  onSplitAt={splitAt}
+                  onMergeWithPrevious={index === 0 ? null : mergeWithPrevious}
+                  onDelete={(phase) => {
+                    void removePhase(phase);
+                  }}
+                  onInsert={insert}
+                  onCardPointerDown={cardPointerDown}
+                />
+              ))}
+              <button
+                type="button"
+                className="board__add-phase"
+                onClick={() => {
+                  edit((s) => addPhase(s));
+                }}
+              >
+                + Phase
+              </button>
+            </div>
+          </div>
+        )}
 
-        {cards > 0 && (
+        {view === "board" && cards > 0 && (
           <PacingPanel
             story={story}
             open={showPacing}
@@ -340,14 +498,9 @@ export function Board({ story }: { story: Story }) {
             }}
           />
         )}
-
-        <footer className="board__hints">
-          <span>Drag cards or Alt + arrows to reorder · Hover between cards to insert</span>
-          <span>Arrows to move · Enter to write · Delete to remove</span>
-        </footer>
       </div>
 
-      {selected !== null && (
+      {view === "board" && selected !== null && (
         <Inspector
           key={selected.beat.id}
           location={selected}
@@ -373,21 +526,31 @@ export function Board({ story }: { story: Story }) {
         />
       )}
 
+      {finding && (
+        <QuickFind
+          story={story}
+          onPick={pickResult}
+          onClose={() => {
+            setFinding(false);
+          }}
+        />
+      )}
+
       {dragging !== null && draggedBeat !== null && (
         <div
           ref={ghostRef}
           className="card-ghost"
-          style={{
-            width: dragging.width,
-            transform: `translate(${dragging.x}px, ${dragging.y}px) rotate(1.5deg)`,
-          }}
+          style={{ transform: `translate(${dragging.x}px, ${dragging.y}px) rotate(1.5deg)` }}
           aria-hidden="true"
         >
-          <BeatCard
-            beat={draggedBeat.beat}
-            number={`${draggedBeat.phaseIndex + 1}.${draggedBeat.beatIndex + 1}`}
-            lookup={lookup}
-          />
+          {/* Same zoom as the board, so the lifted card looks like the one picked up. */}
+          <div style={{ zoom, width: dragging.width / zoom }}>
+            <BeatCard
+              beat={draggedBeat.beat}
+              number={`${draggedBeat.phaseIndex + 1}.${draggedBeat.beatIndex + 1}`}
+              lookup={lookup}
+            />
+          </div>
         </div>
       )}
     </div>
@@ -406,6 +569,31 @@ function readFlag(key: string, fallback: boolean): boolean {
 function writeFlag(key: string, value: boolean): void {
   try {
     window.localStorage.setItem(key, value ? "1" : "0");
+  } catch {
+    // Not remembered; harmless.
+  }
+}
+
+const ZOOM_MIN = 0.7;
+const ZOOM_MAX = 1.6;
+const ZOOM_STEP = 0.1;
+
+function clampZoom(value: number): number {
+  if (!Number.isFinite(value)) return 1;
+  return Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value)) * 10) / 10;
+}
+
+function readText(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeText(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
   } catch {
     // Not remembered; harmless.
   }
