@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -77,6 +78,14 @@ export function Board({ story }: { story: Story }) {
     writeText("sampo.zoom", String(clamped));
   }, []);
 
+  /** Buttons and keys move in clean 10 % steps from wherever the wheel left the zoom. */
+  const stepZoom = useCallback(
+    (direction: 1 | -1) => {
+      changeZoom(Math.round((zoom + direction * ZOOM_STEP) * 10) / 10);
+    },
+    [zoom, changeZoom],
+  );
+
   const openCard = useCallback(
     (beatId: BeatId) => {
       changeView("board");
@@ -112,10 +121,10 @@ export function Board({ story }: { story: Story }) {
         setFinding(true);
       } else if (key === "=" || key === "+") {
         event.preventDefault();
-        changeZoom(zoom + ZOOM_STEP);
+        stepZoom(1);
       } else if (key === "-") {
         event.preventDefault();
-        changeZoom(zoom - ZOOM_STEP);
+        stepZoom(-1);
       } else if (key === "0") {
         event.preventDefault();
         changeZoom(1);
@@ -125,7 +134,56 @@ export function Board({ story }: { story: Story }) {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [zoom, changeZoom]);
+  }, [stepZoom, changeZoom]);
+
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+
+  // Ctrl + wheel (or a trackpad pinch) zooms around the pointer, as in design tools: the
+  // spot under the cursor stays under the cursor.
+  const hasColumns = view === "board" && story.phases.length > 0;
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!hasColumns || scroller === null) return undefined;
+
+    const onWheel = (event: WheelEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      event.preventDefault();
+
+      const current = zoomRef.current;
+      const next = clampZoom(current * Math.exp(-event.deltaY * WHEEL_SENSITIVITY));
+      if (next === current) return;
+
+      const rect = scroller.getBoundingClientRect();
+      const pointerX = event.clientX - rect.left;
+      const pointerY = event.clientY - rect.top;
+      zoomAnchor.current = {
+        contentX: (scroller.scrollLeft + pointerX) / current,
+        contentY: (scroller.scrollTop + pointerY) / current,
+        pointerX,
+        pointerY,
+      };
+      zoomRef.current = next;
+      changeZoom(next);
+    };
+
+    // Not passive: the browser must not also scroll or zoom the page.
+    scroller.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      scroller.removeEventListener("wheel", onWheel);
+    };
+  }, [hasColumns, changeZoom]);
+
+  // After the new zoom is laid out, scroll so the anchored point is back under the pointer.
+  useLayoutEffect(() => {
+    const anchor = zoomAnchor.current;
+    const scroller = scrollerRef.current;
+    if (anchor === null || scroller === null) return;
+    scroller.scrollLeft = anchor.contentX * zoom - anchor.pointerX;
+    scroller.scrollTop = anchor.contentY * zoom - anchor.pointerY;
+    zoomAnchor.current = null;
+  }, [zoom]);
   const lookup = useMemo(() => buildLookup(story), [story]);
   const togglePacing = useCallback(() => {
     setShowPacing((current) => {
@@ -140,6 +198,8 @@ export function Board({ story }: { story: Story }) {
     reserve: 360,
   });
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const zoomRef = useRef(1);
+  const zoomAnchor = useRef<ZoomAnchor | null>(null);
 
   const edit = useCallback(
     (recipe: (story: Story) => Story, group?: string) => {
@@ -380,7 +440,7 @@ export function Board({ story }: { story: Story }) {
                     aria-label="Zoom out"
                     disabled={zoom <= ZOOM_MIN}
                     onClick={() => {
-                      changeZoom(zoom - ZOOM_STEP);
+                      stepZoom(-1);
                     }}
                   >
                     −
@@ -400,7 +460,7 @@ export function Board({ story }: { story: Story }) {
                     aria-label="Zoom in"
                     disabled={zoom >= ZOOM_MAX}
                     onClick={() => {
-                      changeZoom(zoom + ZOOM_STEP);
+                      stepZoom(1);
                     }}
                   >
                     +
@@ -574,13 +634,24 @@ function writeFlag(key: string, value: boolean): void {
   }
 }
 
-const ZOOM_MIN = 0.7;
-const ZOOM_MAX = 1.6;
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 2;
 const ZOOM_STEP = 0.1;
+/** One wheel notch (deltaY 100) changes the zoom by about 15 %. */
+const WHEEL_SENSITIVITY = 0.0015;
+
+interface ZoomAnchor {
+  /** The point under the pointer, in unzoomed board coordinates. */
+  readonly contentX: number;
+  readonly contentY: number;
+  /** Where the pointer was, relative to the scroller. */
+  readonly pointerX: number;
+  readonly pointerY: number;
+}
 
 function clampZoom(value: number): number {
   if (!Number.isFinite(value)) return 1;
-  return Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value)) * 10) / 10;
+  return Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value)) * 100) / 100;
 }
 
 function readText(key: string): string | null {
