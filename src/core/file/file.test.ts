@@ -1,21 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { createIdFactory, type IdSource, type Story } from "../model";
-import lighthouse from "../parse/__fixtures__/lighthouse.txt?raw";
-import { parsePlainText } from "../parse";
+import { addCardType, setLineDirection, updateBeat, type LineBlock, type Story } from "../model";
+import { deterministicIds, sampleStory as baseStory } from "../testing/sample-story";
 import { deserializeStory } from "./deserialize";
 import { CURRENT_VERSION, FORMAT_ID } from "./format";
 import { serializeStory } from "./serialize";
 
-function deterministicIds() {
-  let time = 0;
-  const source: IdSource = { now: () => time++, fillRandom: (bytes) => bytes.fill(0) };
-  return createIdFactory(source);
-}
-
-function sampleStory(): Story {
-  const story = parsePlainText(lighthouse, { title: "Majakka", ids: deterministicIds() });
-  // Exercise the optional fields the parser never produces.
+function baseSample(): Story {
+  const story = baseStory();
+  // Exercise the optional fields an import never produces.
   const [phase] = story.phases;
   const [beat] = phase?.beats ?? [];
   if (phase === undefined || beat === undefined) throw new Error("fixture changed");
@@ -43,6 +36,17 @@ function sampleStory(): Story {
       ...story.phases.slice(1),
     ],
   };
+}
+
+/** The base sample plus every optional field format 2 can hold. */
+function sampleStory(): Story {
+  const base = baseSample();
+  const beat = base.phases[0]?.beats[1];
+  const line = beat?.blocks.find((block): block is LineBlock => block.type === "line");
+  if (beat === undefined || line === undefined) throw new Error("fixture changed");
+
+  const { story: withType, typeId } = addCardType(base, "Boss fight", deterministicIds());
+  return setLineDirection(updateBeat(withType, beat.id, { typeId }), line.id, "kuiskaten");
 }
 
 /** Round-trips the story through the file format and parses the raw JSON for tampering. */
@@ -129,7 +133,7 @@ describe("deserializeStory", () => {
     if (phase === undefined || beat === undefined) throw new Error("fixture changed");
 
     phase["title"] = 42;
-    beat["kind"] = "cutscene";
+    beat["typeId"] = "ct_nope";
     beat["intensity"] = 9;
 
     const result = load(file);
@@ -137,7 +141,7 @@ describe("deserializeStory", () => {
       ok: false,
       errors: [
         "story.phases[0].title: expected a string",
-        "story.phases[0].beats[0].kind: expected one of narrative, mechanic, shift, insight",
+        "story.phases[0].beats[0].typeId: expected a cardType id",
         "story.phases[0].beats[0].intensity: expected an integer between 0 and 5",
       ],
     });
@@ -168,5 +172,56 @@ describe("deserializeStory", () => {
     const result = load(file);
     expect(result.ok).toBe(false);
     expect(!result.ok && result.errors.every((error) => /unknown entity/u.test(error))).toBe(true);
+  });
+
+  it("rejects cards whose type does not exist", () => {
+    const file = rawFile();
+    file.story["cardTypes"] = (file.story["cardTypes"] as unknown[]).slice(1);
+    const result = load(file);
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.errors[0]).toMatch(/typeId: unknown card type/u);
+  });
+
+  it("upgrades version 1 files with fixed beat kinds", () => {
+    const v1 = {
+      format: FORMAT_ID,
+      version: 1,
+      story: {
+        id: "st_01JB3Z8Q4M6V2N7KXW9R0T5H1C",
+        title: "Vanha",
+        entities: [],
+        phases: [
+          {
+            id: "ph_01JB3Z8Q4M6V2N7KXW9R0T5H1D",
+            title: "Alku",
+            beats: [
+              { id: "bt_01JB3Z8Q4M6V2N7KXW9R0T5H1E", kind: "mechanic", blocks: [] },
+              { id: "bt_01JB3Z8Q4M6V2N7KXW9R0T5H1F", kind: "narrative", blocks: [] },
+            ],
+          },
+        ],
+      },
+    };
+
+    const result = load(v1);
+    if (!result.ok) throw new Error(result.errors.join("\n"));
+
+    const typeName = (id: string) => result.story.cardTypes.find((type) => type.id === id)?.name;
+    const beats = result.story.phases[0]?.beats ?? [];
+    expect(beats.map((beat) => typeName(beat.typeId))).toEqual(["Gameplay", "Scene"]);
+  });
+
+  it("keeps every format 2 field through a save and load", () => {
+    const story = sampleStory();
+    const loaded = deserializeStory(serializeStory(story));
+    if (!loaded.ok) throw new Error(loaded.errors.join("\n"));
+
+    expect(loaded.story.cardTypes.at(-1)?.name).toBe("Boss fight");
+    expect(loaded.story.entities.every((entity) => entity.color !== undefined)).toBe(true);
+    const beat = loaded.story.phases[0]?.beats[1];
+    expect(beat?.typeId).toBe(loaded.story.cardTypes.at(-1)?.id);
+    expect(beat?.blocks.find((block) => block.type === "line")).toEqual(
+      expect.objectContaining({ direction: "kuiskaten" }),
+    );
   });
 });

@@ -1,4 +1,4 @@
-import type { Beat, Block, Entity, Phase, Story } from "../model";
+import type { Beat, Block, CardType, Entity, Phase, Story } from "../model";
 import { CURRENT_VERSION, FORMAT_ID } from "./format";
 
 export interface SerializeOptions {
@@ -20,6 +20,7 @@ export function serializeStory(story: Story, options: SerializeOptions = {}): st
     story: {
       id: story.id,
       title: story.title,
+      cardTypes: story.cardTypes.map(cardTypeToJson),
       entities: story.entities.map(entityToJson),
       phases: story.phases.map(phaseToJson),
     },
@@ -28,12 +29,17 @@ export function serializeStory(story: Story, options: SerializeOptions = {}): st
   return `${JSON.stringify(file, null, 2)}\n`;
 }
 
+function cardTypeToJson(type: CardType) {
+  return { id: type.id, name: type.name, color: type.color };
+}
+
 function entityToJson(entity: Entity) {
   return {
     id: entity.id,
     kind: entity.kind,
     name: entity.name,
     aliases: entity.aliases,
+    ...optional("color", entity.color),
     ...optional("description", entity.description),
   };
 }
@@ -50,7 +56,7 @@ function phaseToJson(phase: Phase) {
 function beatToJson(beat: Beat) {
   return {
     id: beat.id,
-    kind: beat.kind,
+    typeId: beat.typeId,
     ...optional("label", beat.label),
     ...optional("intensity", beat.intensity),
     blocks: beat.blocks.map(blockToJson),

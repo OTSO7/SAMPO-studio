@@ -1,9 +1,10 @@
 import {
-  BEAT_KINDS,
   ENTITY_KINDS,
   NOTE_KINDS,
+  SWATCHES,
   type Beat,
   type Block,
+  type CardType,
   type Entity,
   type Intensity,
   type Phase,
@@ -71,13 +72,31 @@ function readStory(r: Reader, value: unknown): Story | undefined {
 
   const id = r.id("story", o["id"], "story.id");
   const title = r.string(o["title"], "story.title");
+  const cardTypes = r.each(o["cardTypes"], "story.cardTypes", (item, path) =>
+    readCardType(r, item, path),
+  );
   const entities = r.each(o["entities"], "story.entities", (item, path) =>
     readEntity(r, item, path),
   );
   const phases = r.each(o["phases"], "story.phases", (item, path) => readPhase(r, item, path));
 
+  if (cardTypes.length === 0 && r.errors.length === 0) {
+    r.fail("story.cardTypes", "a story needs at least one card type");
+  }
   if (id === undefined || title === undefined) return undefined;
-  return { id, title, entities, phases };
+  return { id, title, cardTypes, entities, phases };
+}
+
+function readCardType(r: Reader, value: unknown, path: string): CardType | undefined {
+  const o = r.object(value, path);
+  if (o === undefined) return undefined;
+
+  const id = r.id("cardType", o["id"], `${path}.id`);
+  const name = r.string(o["name"], `${path}.name`);
+  const color = r.oneOf(o["color"], SWATCHES, `${path}.color`);
+
+  if (id === undefined || name === undefined || color === undefined) return undefined;
+  return { id, name, color };
 }
 
 function readEntity(r: Reader, value: unknown, path: string): Entity | undefined {
@@ -89,9 +108,18 @@ function readEntity(r: Reader, value: unknown, path: string): Entity | undefined
   const name = r.string(o["name"], `${path}.name`);
   const aliases = r.each(o["aliases"], `${path}.aliases`, (item, p) => r.string(item, p));
   const description = r.optionalString(o["description"], `${path}.description`);
+  const color =
+    o["color"] === undefined ? undefined : r.oneOf(o["color"], SWATCHES, `${path}.color`);
 
   if (id === undefined || kind === undefined || name === undefined) return undefined;
-  return { id, kind, name, aliases, ...(description === undefined ? {} : { description }) };
+  return {
+    id,
+    kind,
+    name,
+    aliases,
+    ...(color === undefined ? {} : { color }),
+    ...(description === undefined ? {} : { description }),
+  };
 }
 
 function readPhase(r: Reader, value: unknown, path: string): Phase | undefined {
@@ -112,7 +140,7 @@ function readBeat(r: Reader, value: unknown, path: string): Beat | undefined {
   if (o === undefined) return undefined;
 
   const id = r.id("beat", o["id"], `${path}.id`);
-  const kind = r.oneOf(o["kind"], BEAT_KINDS, `${path}.kind`);
+  const typeId = r.id("cardType", o["typeId"], `${path}.typeId`);
   const label = r.optionalString(o["label"], `${path}.label`);
   const intensity =
     o["intensity"] === undefined
@@ -120,10 +148,10 @@ function readBeat(r: Reader, value: unknown, path: string): Beat | undefined {
       : (r.integer(o["intensity"], 0, 5, `${path}.intensity`) as Intensity | undefined);
   const blocks = r.each(o["blocks"], `${path}.blocks`, (item, p) => readBlock(r, item, p));
 
-  if (id === undefined || kind === undefined) return undefined;
+  if (id === undefined || typeId === undefined) return undefined;
   return {
     id,
-    kind,
+    typeId,
     ...(label === undefined ? {} : { label }),
     ...(intensity === undefined ? {} : { intensity }),
     blocks,
@@ -168,6 +196,8 @@ function checkIntegrity(story: Story): string[] {
   };
 
   const entityIds = new Set(story.entities.map((entity) => entity.id));
+  const typeIds = new Set(story.cardTypes.map((type) => type.id));
+  story.cardTypes.forEach((type, i) => claim(type.id, `story.cardTypes[${i}].id`));
   story.entities.forEach((entity, i) => claim(entity.id, `story.entities[${i}].id`));
 
   story.phases.forEach((phase, p) => {
@@ -175,6 +205,9 @@ function checkIntegrity(story: Story): string[] {
     phase.beats.forEach((beat, b) => {
       const beatPath = `story.phases[${p}].beats[${b}]`;
       claim(beat.id, `${beatPath}.id`);
+      if (!typeIds.has(beat.typeId)) {
+        errors.push(`${beatPath}.typeId: unknown card type ${beat.typeId}`);
+      }
       beat.blocks.forEach((block, k) => {
         const blockPath = `${beatPath}.blocks[${k}]`;
         claim(block.id, `${blockPath}.id`);
