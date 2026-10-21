@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "SAMPO Studio",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "fi.routa.sampo",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -27,13 +27,32 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis", "msi"],
+    "publisher": "SAMPO Studio",
+    "copyright": "© 2026 SAMPO Studio",
+    "category": "Productivity",
+    "shortDescription": "Story and dialogue boards for game teams",
+    "longDescription": "SAMPO Studio turns story documents into a storyboard of phases, cards and dialogue that game teams can plan, edit and present together.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["sampo"],
+        "name": "SAMPO Story",
+        "description": "SAMPO story",
+        "role": "Editor",
+        "mimeType": "application/x-sampo-story"
+      }
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
   }
 }
