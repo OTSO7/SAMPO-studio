@@ -1,13 +1,14 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
   type PointerEvent,
 } from "react";
+
+import { flushSync } from "react-dom";
 
 import { ask, editStory } from "@app/store";
 import {
@@ -65,6 +66,7 @@ export function Board({ story }: { story: Story }) {
     readText("sampo.view") === "lines" ? "lines" : "board",
   );
   const [zoom, setZoom] = useState(() => clampZoom(Number(readText("sampo.zoom") ?? "1")));
+  const zoomRef = useRef(zoom);
   const [finding, setFinding] = useState(false);
 
   const changeView = useCallback((next: "board" | "lines") => {
@@ -144,7 +146,7 @@ export function Board({ story }: { story: Story }) {
   // spot under the cursor stays under the cursor.
   const hasColumns = view === "board" && story.phases.length > 0;
   useEffect(() => {
-    const scroller = scrollerRef.current;
+    const scroller = document.querySelector<HTMLElement>(".board__scroller");
     if (!hasColumns || scroller === null) return undefined;
 
     const onWheel = (event: WheelEvent) => {
@@ -158,14 +160,18 @@ export function Board({ story }: { story: Story }) {
       const rect = scroller.getBoundingClientRect();
       const pointerX = event.clientX - rect.left;
       const pointerY = event.clientY - rect.top;
-      zoomAnchor.current = {
-        contentX: (scroller.scrollLeft + pointerX) / current,
-        contentY: (scroller.scrollTop + pointerY) / current,
-        pointerX,
-        pointerY,
-      };
+      // The point under the pointer, in unzoomed board coordinates.
+      const contentX = (scroller.scrollLeft + pointerX) / current;
+      const contentY = (scroller.scrollTop + pointerY) / current;
+
+      // Apply the zoom synchronously so the new layout exists before scrolling back to
+      // the anchored point.
       zoomRef.current = next;
-      changeZoom(next);
+      flushSync(() => {
+        changeZoom(next);
+      });
+      scroller.scrollLeft = contentX * next - pointerX;
+      scroller.scrollTop = contentY * next - pointerY;
     };
 
     // Not passive: the browser must not also scroll or zoom the page.
@@ -174,16 +180,6 @@ export function Board({ story }: { story: Story }) {
       scroller.removeEventListener("wheel", onWheel);
     };
   }, [hasColumns, changeZoom]);
-
-  // After the new zoom is laid out, scroll so the anchored point is back under the pointer.
-  useLayoutEffect(() => {
-    const anchor = zoomAnchor.current;
-    const scroller = scrollerRef.current;
-    if (anchor === null || scroller === null) return;
-    scroller.scrollLeft = anchor.contentX * zoom - anchor.pointerX;
-    scroller.scrollTop = anchor.contentY * zoom - anchor.pointerY;
-    zoomAnchor.current = null;
-  }, [zoom]);
   const lookup = useMemo(() => buildLookup(story), [story]);
   const togglePacing = useCallback(() => {
     setShowPacing((current) => {
@@ -198,8 +194,6 @@ export function Board({ story }: { story: Story }) {
     reserve: 360,
   });
   const scrollerRef = useRef<HTMLDivElement | null>(null);
-  const zoomRef = useRef(1);
-  const zoomAnchor = useRef<ZoomAnchor | null>(null);
 
   const edit = useCallback(
     (recipe: (story: Story) => Story, group?: string) => {
@@ -639,15 +633,6 @@ const ZOOM_MAX = 2;
 const ZOOM_STEP = 0.1;
 /** One wheel notch (deltaY 100) changes the zoom by about 15 %. */
 const WHEEL_SENSITIVITY = 0.0015;
-
-interface ZoomAnchor {
-  /** The point under the pointer, in unzoomed board coordinates. */
-  readonly contentX: number;
-  readonly contentY: number;
-  /** Where the pointer was, relative to the scroller. */
-  readonly pointerX: number;
-  readonly pointerY: number;
-}
 
 function clampZoom(value: number): number {
   if (!Number.isFinite(value)) return 1;
