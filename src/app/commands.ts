@@ -2,6 +2,7 @@ import { collectVoiceLines, storyToMarkdown, voiceLinesToCsv } from "@core/expor
 import { assembleStory, suggestRows } from "@core/import";
 import { createStory, type IdFactory } from "@core/model";
 import { FileError, type StoryFiles } from "./files";
+import type { RecentFiles } from "./recent-files";
 import {
   closeDocument,
   isDirty,
@@ -26,6 +27,7 @@ export interface AppDeps {
   readonly notices: NoticeStore;
   readonly files: StoryFiles;
   readonly confirm: Confirm;
+  readonly recent?: RecentFiles;
   readonly ids?: IdFactory;
 }
 
@@ -45,24 +47,42 @@ export async function newStory(deps: AppDeps): Promise<boolean> {
  * Save / Don't save / Cancel; a story with nothing to save closes straight away.
  */
 export async function closeStory(deps: AppDeps): Promise<boolean> {
-  const state = deps.document.getState();
-  if (state.story === null) return true;
-
-  if (isDirty(state)) {
-    const choice = await deps.confirm.saveChanges(
-      state.path === null ? state.story.title : fileName(state.path),
-    );
-    if (choice === "cancel") return false;
-    if (choice === "save" && !(await save(deps))) return false;
-  }
-
+  if (!(await askAboutUnsaved(deps))) return false;
   closeDocument(deps.document);
   return true;
+}
+
+/**
+ * Called when the window is about to close. Stories with a file are saved quietly, as
+ * autosave would; a story that was never saved asks Save / Don't save / Cancel.
+ */
+export async function confirmWindowClose(deps: AppDeps): Promise<boolean> {
+  const state = deps.document.getState();
+  if (state.story === null || !isDirty(state)) return true;
+  if (state.path !== null) return save(deps);
+  return askAboutUnsaved(deps);
+}
+
+async function askAboutUnsaved(deps: AppDeps): Promise<boolean> {
+  const state = deps.document.getState();
+  if (state.story === null || !isDirty(state)) return true;
+
+  const choice = await deps.confirm.saveChanges(
+    state.path === null ? state.story.title : fileName(state.path),
+  );
+  if (choice === "cancel") return false;
+  return choice === "discard" || save(deps);
 }
 
 export async function openStory(deps: AppDeps): Promise<boolean> {
   if (!(await releaseCurrent(deps))) return false;
   return applyOpen(deps, () => deps.files.open());
+}
+
+/** Opens a known file, e.g. from the recent list on the start screen. */
+export async function openStoryAt(deps: AppDeps, path: string): Promise<boolean> {
+  if (!(await releaseCurrent(deps))) return false;
+  return applyOpen(deps, () => deps.files.openPath(path), path);
 }
 
 /** Opens the file the app was launched with, if it was started by opening a `.sampo`. */
@@ -115,6 +135,7 @@ export async function exportStory(deps: AppDeps, kind: ExportKind): Promise<bool
 async function applyOpen(
   deps: AppDeps,
   open: () => ReturnType<StoryFiles["open"]>,
+  knownPath?: string,
 ): Promise<boolean> {
   try {
     const result = await open();
@@ -130,9 +151,14 @@ async function applyOpen(
         return false;
       case "opened":
         loadDocument(deps.document, result.story, result.path);
+        deps.recent?.add(result.path);
         return true;
     }
   } catch (error) {
+    // A recent file that has been moved or deleted drops off the list.
+    if (error instanceof FileError && error.code === "not_found" && knownPath !== undefined) {
+      deps.recent?.remove(knownPath);
+    }
     showNotice(deps.notices, { tone: "error", title: describeFileError(error) });
     return false;
   }
@@ -160,6 +186,10 @@ export async function save(deps: AppDeps, options: { saveAs?: boolean } = {}): P
       title: "Save failed",
       ...(status.kind === "failed" ? { details: [status.message] } : {}),
     });
+  }
+  if (outcome === "saved") {
+    const { path } = deps.document.getState();
+    if (path !== null) deps.recent?.add(path);
   }
   return outcome === "saved";
 }

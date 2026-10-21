@@ -4,7 +4,9 @@ import { serializeStory } from "@core/file";
 import { sampleStory } from "@core/testing/sample-story";
 import {
   closeStory,
+  confirmWindowClose,
   exportStory,
+  openStoryAt,
   openLaunchFile,
   importScript,
   newStory,
@@ -14,6 +16,7 @@ import {
   type SaveChoice,
 } from "./commands";
 import { FileError } from "./files";
+import { createRecentFiles, type KeyValueStorage } from "./recent-files";
 import { createDocumentStore, createNoticeStore, editStory, isDirty, loadDocument } from "./store";
 import { ControlledHost, storyFilesFor } from "./store/test-helpers";
 
@@ -271,5 +274,75 @@ describe("openLaunchFile", () => {
     const { deps } = setup();
     expect(await openLaunchFile(deps)).toBe(false);
     expect(deps.document.getState().story).toBeNull();
+  });
+});
+
+function memoryStorage(): KeyValueStorage {
+  const data = new Map<string, string>();
+  return {
+    getItem: (key) => data.get(key) ?? null,
+    setItem: (key, value) => {
+      data.set(key, value);
+    },
+  };
+}
+
+describe("confirmWindowClose", () => {
+  it("lets the window close when nothing is unsaved", async () => {
+    const { deps, asked } = setup();
+    loadDocument(deps.document, existing, "D:/Routa.sampo");
+    expect(await confirmWindowClose(deps)).toBe(true);
+    expect(asked).toEqual([]);
+  });
+
+  it("saves a file-backed story quietly before closing", async () => {
+    const { host, deps, asked } = setup();
+    loadDocument(deps.document, existing, "D:/Routa.sampo");
+    editStory(deps.document, (story) => ({ ...story, title: "Routa 2" }));
+
+    expect(await confirmWindowClose(deps)).toBe(true);
+
+    expect(asked).toEqual([]);
+    expect(host.writes.map((write) => write.path)).toEqual(["D:/Routa.sampo"]);
+  });
+
+  it("asks before closing a story that was never saved", async () => {
+    const { deps, asked } = setup({ choice: "cancel" });
+    loadDocument(deps.document, existing, null);
+
+    expect(await confirmWindowClose(deps)).toBe(false);
+    expect(asked).toEqual([`save ${existing.title}`]);
+  });
+
+  it("closes after Don't save", async () => {
+    const { deps } = setup({ choice: "discard" });
+    loadDocument(deps.document, existing, null);
+    expect(await confirmWindowClose(deps)).toBe(true);
+  });
+});
+
+describe("recent files", () => {
+  it("remembers files that were opened or saved", async () => {
+    const { host, deps } = setup();
+    const recent = createRecentFiles(memoryStorage());
+    const withRecent = { ...deps, recent };
+    host.files.set("D:/A.sampo", serializeStory(existing));
+    host.saveAnswer = "D:/B.sampo";
+
+    await openStoryAt(withRecent, "D:/A.sampo");
+    await save(withRecent, { saveAs: true });
+
+    expect(recent.list()).toEqual(["D:/B.sampo", "D:/A.sampo"]);
+  });
+
+  it("forgets a recent file that no longer exists", async () => {
+    const { deps } = setup();
+    const recent = createRecentFiles(memoryStorage());
+    recent.add("D:/Gone.sampo");
+
+    expect(await openStoryAt({ ...deps, recent }, "D:/Gone.sampo")).toBe(false);
+
+    expect(recent.list()).toEqual([]);
+    expect(deps.notices.getState().notice?.title).toBe("File not found");
   });
 });
