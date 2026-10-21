@@ -8,8 +8,9 @@
   --ink-raised: #111315;
   --ink-overlay: #181b1e;
   --bone: #e9e3d5;
-  --bone-muted: rgb(233 227 213 / 62%);
-  --bone-faint: rgb(233 227 213 / 38%);
+  /* Kept above WCAG AA for small text on ink: muted ~9:1, faint ~4.6:1. */
+  --bone-muted: rgb(233 227 213 / 72%);
+  --bone-faint: rgb(233 227 213 / 52%);
   --hairline: rgb(233 227 213 / 12%);
   --hairline-strong: rgb(233 227 213 / 22%);
 
@@ -30,7 +31,7 @@
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   --font-story: "Source Serif 4 Variable", "Source Serif 4", Georgia, serif;
 
-  --text-xs: 0.6875rem;
+  --text-xs: 0.75rem;
   --text-sm: 0.8125rem;
   --text-md: 0.9375rem;
   --text-lg: 1.125rem;

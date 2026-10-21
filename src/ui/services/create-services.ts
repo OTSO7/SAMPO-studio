@@ -1,4 +1,5 @@
 import { StoryFiles, tauriFileHost } from "@app/files";
+import { createRecentFiles } from "@app/recent-files";
 import {
   createDocumentStore,
   createNoticeStore,
@@ -20,8 +21,18 @@ export function createServices(): Services {
       notices: createNoticeStore(),
       files,
       confirm: createPromptConfirm(prompts),
+      recent: createRecentFiles(browserStorage()),
     },
     prompts,
     autosave: startAutosave(document, files),
   };
+}
+
+/** Local storage can be missing or blocked; recent files then simply are not remembered. */
+function browserStorage(): Storage | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
 }

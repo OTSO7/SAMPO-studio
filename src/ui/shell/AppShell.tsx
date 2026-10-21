@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { openLaunchFile } from "@app/commands";
+import { confirmWindowClose, openLaunchFile } from "@app/commands";
+import { guardWindowClose } from "@app/window";
 
 import { Board } from "@ui/board/Board";
 import { FocusView } from "@ui/focus/FocusView";
@@ -8,6 +9,7 @@ import { useStore } from "@ui/hooks/use-store";
 import { useServices } from "@ui/services/use-services";
 import { NoticeBar } from "./NoticeBar";
 import { PromptDialog } from "./PromptDialog";
+import { ShortcutsSheet } from "./ShortcutsSheet";
 import { StartScreen } from "./StartScreen";
 import { Statusbar } from "./Statusbar";
 import { Titlebar } from "./Titlebar";
@@ -19,12 +21,51 @@ export function AppShell() {
   const { deps } = useServices();
   const story = useStore(deps.document, (state) => state.story);
   const [focusing, setFocusing] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   useShortcuts(deps);
 
   // Double-clicking a .sampo file starts the app with that file.
   useEffect(() => {
     void openLaunchFile(deps);
   }, [deps]);
+
+  // Closing the window never loses work: saved stories are saved, new ones ask first.
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | null = null;
+    void guardWindowClose(() => confirmWindowClose(deps)).then((remove) => {
+      if (disposed) remove();
+      else unlisten = remove;
+    });
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [deps]);
+
+  const closeShortcuts = useCallback(() => {
+    setShowShortcuts(false);
+  }, []);
+
+  // ? or F1 lists every shortcut.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      const typing =
+        target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          target instanceof HTMLInputElement ||
+          target instanceof HTMLTextAreaElement);
+      if (event.key === "F1" || (event.key === "?" && !typing)) {
+        event.preventDefault();
+        setShowShortcuts(true);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
 
   const exitFocus = useCallback(() => {
     setFocusing(false);
@@ -50,6 +91,7 @@ export function AppShell() {
         <FocusView story={story} onExit={exitFocus} />
         <NoticeBar />
         <PromptDialog />
+        {showShortcuts && <ShortcutsSheet onClose={closeShortcuts} />}
       </>
     );
   }
@@ -68,9 +110,14 @@ export function AppShell() {
       <main className={`shell__main ${story === null ? "" : "shell__main--board"}`}>
         {story === null ? <StartScreen /> : <Board story={story} />}
       </main>
-      <Statusbar />
+      <Statusbar
+        onShowShortcuts={() => {
+          setShowShortcuts(true);
+        }}
+      />
       <NoticeBar />
       <PromptDialog />
+      {showShortcuts && <ShortcutsSheet onClose={closeShortcuts} />}
     </div>
   );
 }

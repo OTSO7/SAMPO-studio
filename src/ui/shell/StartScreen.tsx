@@ -1,10 +1,20 @@
-import { importScript, newStory, openStory } from "@app/commands";
+import { useState } from "react";
+
+import { importScript, newStory, openStory, openStoryAt } from "@app/commands";
 import { showNotice } from "@app/store";
 import { Kbd } from "@ui/primitives/Kbd";
 import { useServices } from "@ui/services/use-services";
 
+function splitPath(path: string): { name: string; folder: string } {
+  const parts = path.split(/[\\/]/u);
+  const name = parts.pop() ?? path;
+  return { name: name.replace(/\.sampo$/iu, ""), folder: parts.join("\\") };
+}
+
 export function StartScreen() {
   const { deps } = useServices();
+  // Read once per visit to the start screen; opening a file leaves this screen anyway.
+  const [recent] = useState(() => deps.recent?.list() ?? []);
 
   const pasteFromClipboard = async () => {
     try {
@@ -35,6 +45,30 @@ export function StartScreen() {
           </li>
         ))}
       </ul>
+
+      {recent.length > 0 && (
+        <>
+          <p className="start__eyebrow start__eyebrow--secondary">Recent</p>
+          <ul className="start__recent">
+            {recent.map((path) => {
+              const { name, folder } = splitPath(path);
+              return (
+                <li key={path}>
+                  <button
+                    type="button"
+                    className="start__file"
+                    title={path}
+                    onClick={() => void openStoryAt(deps, path)}
+                  >
+                    <span className="start__file-name">{name}</span>
+                    <span className="start__file-folder">{folder}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
     </section>
   );
 }
