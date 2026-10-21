@@ -1,0 +1,299 @@
+/* Focus mode: one phase at a time, sized for a meeting-room screen. */
+
+.focus {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background:
+    radial-gradient(120% 90% at 50% 30%, transparent 55%, rgb(0 0 0 / 55%) 100%), var(--ink);
+  animation: focus-in var(--duration-slow) var(--ease-out) both;
+}
+
+.focus__top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--hairline);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--bone-faint);
+}
+
+.focus__story {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.focus__progress {
+  color: var(--ochre-text);
+}
+
+.focus__exit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: none;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--bone-muted);
+  cursor: pointer;
+}
+
+.focus__exit:hover {
+  color: var(--bone);
+}
+
+.focus__stage {
+  min-height: 0;
+  padding: var(--space-8) clamp(var(--space-5), 6vw, 120px) var(--space-7);
+  overflow-y: auto;
+  animation: focus-phase-in var(--duration-slow) var(--ease-out) both;
+}
+
+.focus__stage--empty {
+  display: grid;
+  place-items: center;
+  color: var(--bone-faint);
+}
+
+.focus__intro {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 1100px;
+  margin: 0 auto var(--space-7);
+}
+
+.focus__eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ochre-text);
+}
+
+.focus__title {
+  font-family: var(--font-story);
+  font-size: clamp(2.25rem, 4.5vw, 4rem);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+}
+
+.focus__location {
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  color: var(--bone-muted);
+}
+
+.focus__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(460px, 100%), 1fr));
+  align-items: start;
+  gap: var(--space-5);
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+.focus-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-5);
+  border: 1px solid var(--hairline);
+  border-top: 3px solid var(--swatch);
+  border-radius: var(--radius-md);
+  background: var(--ink-raised);
+}
+
+.focus-card:focus-within {
+  border-color: var(--hairline-strong);
+  border-top-color: var(--swatch);
+}
+
+.focus-card__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.focus-card__number {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--swatch);
+}
+
+.focus-card__heading {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: none;
+  font-family: var(--font-story);
+  font-size: var(--text-xl);
+  line-height: 1.3;
+  user-select: text;
+}
+
+.focus-card__heading::placeholder {
+  color: var(--bone-faint);
+}
+
+.focus-card__heading:focus {
+  border-bottom-color: var(--ochre);
+  outline: none;
+}
+
+.focus-card__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--hairline);
+}
+
+/* Presenting needs larger text than editing. */
+.script--large .script__text {
+  border-color: transparent;
+  background: transparent;
+  font-size: var(--text-lg);
+  line-height: 1.65;
+}
+
+.script--large .script__text:hover {
+  border-color: var(--hairline);
+}
+
+.script--large .script__text:focus {
+  border-color: var(--ochre);
+  background: var(--ink);
+}
+
+.script--large .script__block--line {
+  padding-left: var(--space-7);
+}
+
+.focus__add {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+}
+
+.focus__add button {
+  height: 34px;
+  padding: 0 var(--space-4);
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: none;
+  font-size: var(--text-sm);
+  color: var(--bone-muted);
+  cursor: pointer;
+}
+
+.focus__add button:hover {
+  border-color: var(--bone-faint);
+  color: var(--bone);
+}
+
+.focus__nav {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-3) var(--space-6);
+  border-top: 1px solid var(--hairline);
+}
+
+.focus__step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  font-size: var(--text-sm);
+  color: var(--bone-muted);
+  cursor: pointer;
+  justify-self: start;
+}
+
+.focus__step--next {
+  justify-self: end;
+}
+
+.focus__step:hover:not(:disabled) {
+  border-color: var(--hairline-strong);
+  color: var(--bone);
+}
+
+.focus__step:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.focus__step-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.focus__dots {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.focus__dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 1px solid var(--bone-faint);
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.focus__dot:hover {
+  border-color: var(--bone);
+}
+
+.focus__dot[aria-selected="true"] {
+  border-color: var(--ochre-text);
+  background: var(--ochre-text);
+  transform: scale(1.25);
+}
+
+@keyframes focus-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes focus-phase-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
