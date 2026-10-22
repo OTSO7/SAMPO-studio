@@ -22,11 +22,13 @@ import {
   setLineDirection,
   setLineSpeaker,
   splitPhaseAt,
+  ensureThread,
+  toggleThread,
   updateBeat,
   updateBlockText,
   updatePhase,
 } from "./edit";
-import type { BeatId, PhaseId, Story } from "./index";
+import { threadRuns, type BeatId, type PhaseId, type Story } from "./index";
 
 const story = sampleStory();
 const [first, second] = story.phases;
@@ -36,6 +38,47 @@ const [b3] = second.beats;
 if (b1 === undefined || b2 === undefined || b3 === undefined) throw new Error("fixture changed");
 
 const beatIds = (s: Story) => s.phases.map((phase) => phase.beats.map((beat) => beat.id));
+
+describe("story threads", () => {
+  const ids = deterministicIds();
+  const { story: withThread, entityId: key } = ensureThread(story, "Avain", ids);
+
+  it("runs through its cards in story order, open while it has only one", () => {
+    const setUp = toggleThread(withThread, b3.id, key);
+    expect(threadRuns(setUp)).toEqual([
+      {
+        thread: expect.objectContaining({ name: "Avain", kind: "thread" }),
+        cards: [{ beatId: b3.id, number: "2.1" }],
+      },
+    ]);
+
+    const paidOff = toggleThread(setUp, b1.id, key);
+    expect(threadRuns(paidOff)[0]?.cards.map((card) => card.number)).toEqual(["1.1", "2.1"]);
+  });
+
+  it("reuses a thread by name and never mixes it up with a character", () => {
+    const { story: withAatos } = ensureCharacter(story, "Avain");
+    const again = ensureThread(toggleThread(withThread, b1.id, key), "avain");
+    expect(again.entityId).toBe(key);
+    expect(ensureThread(withAatos, "Avain", ids).entityId).not.toBe(
+      ensureCharacter(withAatos, "Avain").entityId,
+    );
+  });
+
+  it("removes a thread once no card is pinned to it", () => {
+    const pinned = toggleThread(withThread, b1.id, key);
+    const unpinned = toggleThread(pinned, b1.id, key);
+    expect(findBeat(unpinned, b1.id)?.beat).not.toHaveProperty("threads");
+    expect(unpinned.entities.some((entity) => entity.id === key)).toBe(false);
+  });
+
+  it("unpins every card when a thread is deleted", () => {
+    const pinned = toggleThread(toggleThread(withThread, b1.id, key), b2.id, key);
+    const removed = removeEntity(pinned, key);
+    expect(findBeat(removed, b1.id)?.beat).not.toHaveProperty("threads");
+    expect(findBeat(removed, b2.id)?.beat).not.toHaveProperty("threads");
+  });
+});
 
 describe("updatePhase", () => {
   it("renames and relocates a phase", () => {

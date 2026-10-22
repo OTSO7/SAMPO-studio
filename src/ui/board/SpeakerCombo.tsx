@@ -10,6 +10,10 @@ interface SpeakerComboProps {
   onCreate: (name: string) => void;
   /** Called after a choice so focus can move on to the line itself. */
   onDone?: () => void;
+  /** The same picker serves story threads: "Add thread", "+ Thread", "thread". */
+  label?: string;
+  placeholder?: string;
+  noun?: string;
 }
 
 /**
@@ -23,6 +27,9 @@ export function SpeakerCombo({
   onSelect,
   onCreate,
   onDone,
+  label = "Speaker",
+  placeholder = "Speaker",
+  noun = "character",
 }: SpeakerComboProps) {
   const listId = useId();
   const current = characters.find((entity) => entity.id === value);
@@ -51,10 +58,10 @@ export function SpeakerCombo({
         data-autofocus={autoFocus ? "" : undefined}
         className="speaker__input"
         role="combobox"
-        aria-label="Speaker"
+        aria-label={label}
         aria-expanded={open}
         aria-controls={listId}
-        placeholder="Speaker"
+        placeholder={placeholder}
         value={open ? query : (current?.name ?? "")}
         onFocus={() => {
           setQuery("");
@@ -111,7 +118,7 @@ export function SpeakerCombo({
                 choose(matches.length);
               }}
             >
-              + New character “{query?.trim()}”
+              + New {noun} “{query?.trim()}”
             </li>
           )}
         </ul>

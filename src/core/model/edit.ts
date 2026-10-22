@@ -325,18 +325,56 @@ export function ensureCharacter(
   name: string,
   ids: IdFactory = newId,
 ): { story: Story; entityId: EntityId } {
+  return ensureEntity(story, "character", name, ids);
+}
+
+/** Finds a story thread by name (case-insensitive) or starts one. */
+export function ensureThread(
+  story: Story,
+  name: string,
+  ids: IdFactory = newId,
+): { story: Story; entityId: EntityId } {
+  return ensureEntity(story, "thread", name, ids);
+}
+
+/**
+ * Pins a card to a thread, or unpins it. A thread no card is pinned to any more is removed,
+ * so threads never need tidying up by hand.
+ */
+export function toggleThread(story: Story, beatId: BeatId, threadId: EntityId): Story {
+  const next = mapBeats(story, (beat) => {
+    if (beat.id !== beatId) return beat;
+    const { threads = [], ...rest } = beat;
+    const toggled = threads.includes(threadId)
+      ? threads.filter((id) => id !== threadId)
+      : [...threads, threadId];
+    return toggled.length === 0 ? rest : { ...rest, threads: toggled };
+  });
+  const stillUsed = next.phases.some((phase) =>
+    phase.beats.some((beat) => beat.threads?.includes(threadId) === true),
+  );
+  return stillUsed ? next : removeEntity(next, threadId);
+}
+
+function ensureEntity(
+  story: Story,
+  kind: Entity["kind"],
+  name: string,
+  ids: IdFactory,
+): { story: Story; entityId: EntityId } {
   const trimmed = name.trim();
   const key = trimmed.toLocaleLowerCase();
   const existing = story.entities.find(
     (entity) =>
-      entity.name.toLocaleLowerCase() === key ||
-      entity.aliases.some((alias) => alias.toLocaleLowerCase() === key),
+      entity.kind === kind &&
+      (entity.name.toLocaleLowerCase() === key ||
+        entity.aliases.some((alias) => alias.toLocaleLowerCase() === key)),
   );
   if (existing !== undefined) return { story, entityId: existing.id };
 
   const entity: Entity = {
     id: ids.entity(),
-    kind: "character",
+    kind,
     name: trimmed,
     aliases: [],
     color: nextSwatch(story.entities.map((other) => other.color)),
@@ -373,18 +411,25 @@ export function updateEntity(
 /** Removes a character; their lines keep their text and become unattributed. */
 export function removeEntity(story: Story, entityId: EntityId): Story {
   return {
-    ...mapBeats(story, (beat) =>
-      beat.blocks.some((block) => block.type === "line" && block.speaker === entityId)
-        ? {
-            ...beat,
-            blocks: beat.blocks.map((block) =>
-              block.type === "line" && block.speaker === entityId
-                ? { ...block, speaker: null }
-                : block,
-            ),
-          }
-        : beat,
-    ),
+    ...mapBeats(story, (beat) => {
+      let next = beat;
+      if (beat.threads?.includes(entityId) === true) {
+        const { threads, ...rest } = beat;
+        const remaining = threads.filter((id) => id !== entityId);
+        next = remaining.length === 0 ? rest : { ...rest, threads: remaining };
+      }
+      if (beat.blocks.some((block) => block.type === "line" && block.speaker === entityId)) {
+        next = {
+          ...next,
+          blocks: beat.blocks.map((block) =>
+            block.type === "line" && block.speaker === entityId
+              ? { ...block, speaker: null }
+              : block,
+          ),
+        };
+      }
+      return next;
+    }),
     entities: story.entities.filter((entity) => entity.id !== entityId),
   };
 }

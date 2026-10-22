@@ -19,6 +19,8 @@ const MIGRATIONS: Readonly<Record<number, (story: unknown) => unknown>> = {
   4: (story) => story,
   // Version 6 packs pictures and sounds into the file next to the story; blocks point at them.
   5: (story) => story,
+  // Version 7 adds story threads, which older apps would drop or refuse to read.
+  6: (story) => story,
 };
 
 export function migrate(story: unknown, fromVersion: number): unknown {

@@ -19,6 +19,7 @@ export {
   deleteBeat,
   deletePhase,
   ensureCharacter,
+  ensureThread,
   findBeat,
   insertBeat,
   mergeBeatWithPrevious,
@@ -36,6 +37,7 @@ export {
   setMediaSource,
   setStoryTitle,
   splitPhaseAt,
+  toggleThread,
   updateBeat,
   updateBlockText,
   updateCardType,
@@ -43,6 +45,8 @@ export {
   updatePhase,
 } from "./edit";
 export type { Entity, EntityKind } from "./entity";
+export type { ThreadRun } from "./threads";
+export { threadRuns } from "./threads";
 export { ENTITY_KINDS } from "./entity";
 export {
   createCardTypes,

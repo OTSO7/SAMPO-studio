@@ -153,6 +153,10 @@ function readBeat(r: Reader, value: unknown, path: string): Beat | undefined {
     o["status"] === undefined
       ? undefined
       : r.oneOf(o["status"], ["review", "final"] as const, `${path}.status`);
+  const threads =
+    o["threads"] === undefined
+      ? undefined
+      : r.each(o["threads"], `${path}.threads`, (item, p) => r.id("entity", item, p));
   const blocks = r.each(o["blocks"], `${path}.blocks`, (item, p) => readBlock(r, item, p));
 
   if (id === undefined || typeId === undefined) return undefined;
@@ -162,6 +166,7 @@ function readBeat(r: Reader, value: unknown, path: string): Beat | undefined {
     ...(label === undefined ? {} : { label }),
     ...(intensity === undefined ? {} : { intensity }),
     ...(status === undefined ? {} : { status }),
+    ...(threads === undefined || threads.length === 0 ? {} : { threads }),
     blocks,
   };
 }
@@ -234,6 +239,9 @@ function checkIntegrity(story: Story): string[] {
   };
 
   const entityIds = new Set(story.entities.map((entity) => entity.id));
+  const threadIds = new Set(
+    story.entities.filter((entity) => entity.kind === "thread").map((entity) => entity.id),
+  );
   const typeIds = new Set(story.cardTypes.map((type) => type.id));
   story.cardTypes.forEach((type, i) => claim(type.id, `story.cardTypes[${i}].id`));
   story.entities.forEach((entity, i) => claim(entity.id, `story.entities[${i}].id`));
@@ -246,6 +254,11 @@ function checkIntegrity(story: Story): string[] {
       if (!typeIds.has(beat.typeId)) {
         errors.push(`${beatPath}.typeId: unknown card type ${beat.typeId}`);
       }
+      beat.threads?.forEach((threadId, t) => {
+        if (!threadIds.has(threadId)) {
+          errors.push(`${beatPath}.threads[${t}]: unknown thread ${threadId}`);
+        }
+      });
       beat.blocks.forEach((block, k) => {
         const blockPath = `${beatPath}.blocks[${k}]`;
         claim(block.id, `${blockPath}.id`);

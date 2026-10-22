@@ -32,6 +32,7 @@ import {
 import type { SearchResult } from "@core/search";
 import { usePanelWidth } from "@ui/hooks/use-panel-width";
 import { LinesView } from "@ui/lines/LinesView";
+import { ThreadsView } from "@ui/threads/ThreadsView";
 import { EditableText } from "@ui/primitives/EditableText";
 import { useServices } from "@ui/services/use-services";
 import { BeatCard } from "./BeatCard";
@@ -48,6 +49,8 @@ import { useCardDrag, type DropTarget } from "./use-card-drag";
 import { useAddImages, useImageInput } from "./use-images";
 
 import "./board.css";
+
+type View = "board" | "lines" | "threads";
 
 function isTyping(target: EventTarget | null): boolean {
   return (
@@ -67,15 +70,16 @@ export function Board({ story }: { story: Story }) {
   const [focusOnOpen, setFocusOnOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showPacing, setShowPacing] = useState(() => readFlag("sampo.showPacing", true));
-  const [view, setView] = useState<"board" | "lines">(() =>
-    readText("sampo.view") === "lines" ? "lines" : "board",
-  );
+  const [view, setView] = useState<View>(() => {
+    const saved = readText("sampo.view");
+    return saved === "lines" || saved === "threads" ? saved : "board";
+  });
   const [zoom, setZoom] = useState(() => clampZoom(Number(readText("sampo.zoom") ?? "1")));
   const zoomRef = useRef(zoom);
   /** Cards in other states fade back, so a review pass sees only what it needs. */
   const [statusFilter, setStatusFilter] = useState<BeatStatus | null>(null);
 
-  const changeView = useCallback((next: "board" | "lines") => {
+  const changeView = useCallback((next: View) => {
     setView(next);
     writeText("sampo.view", next);
   }, []);
@@ -390,6 +394,7 @@ export function Board({ story }: { story: Story }) {
     (total, phase) => total + phase.beats.filter((beat) => beat.status === "final").length,
     0,
   );
+  const threads = story.entities.filter((entity) => entity.kind === "thread").length;
 
   return (
     <div
@@ -472,65 +477,79 @@ export function Board({ story }: { story: Story }) {
                 Lines
                 {lines > 0 && <span className="view-switch__count">{lines}</span>}
               </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={view === "threads"}
+                title="Clues, mysteries and promises across the story"
+                onClick={() => {
+                  changeView("threads");
+                }}
+              >
+                Threads
+                {threads > 0 && <span className="view-switch__count">{threads}</span>}
+              </button>
             </div>
             <div className="board__tools">
               {view === "board" && (
-                <>
-                  <div className="status-filter" role="group" aria-label="Show cards">
-                    {[null, ...BEAT_STATUSES].map((status) => (
-                      <button
-                        key={status ?? "all"}
-                        type="button"
-                        aria-pressed={statusFilter === status}
-                        onClick={() => {
-                          setStatusFilter(status);
-                        }}
-                      >
-                        {status === null ? "All" : STATUS_NAMES[status]}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="zoom" role="group" aria-label="Zoom">
+                <div className="status-filter" role="group" aria-label="Show cards">
+                  {[null, ...BEAT_STATUSES].map((status) => (
                     <button
+                      key={status ?? "all"}
                       type="button"
-                      aria-label="Zoom out"
-                      disabled={zoom <= ZOOM_MIN}
+                      aria-pressed={statusFilter === status}
                       onClick={() => {
-                        stepZoom(-1);
+                        setStatusFilter(status);
                       }}
                     >
-                      −
+                      {status === null ? "All" : STATUS_NAMES[status]}
                     </button>
-                    <button
-                      type="button"
-                      className="zoom__value"
-                      title="Reset zoom"
-                      onClick={() => {
-                        changeZoom(1);
-                      }}
-                    >
-                      {Math.round(zoom * 100)}%
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Zoom in"
-                      disabled={zoom >= ZOOM_MAX}
-                      onClick={() => {
-                        stepZoom(1);
-                      }}
-                    >
-                      +
-                    </button>
-                  </div>
+                  ))}
+                </div>
+              )}
+              {view !== "lines" && (
+                <div className="zoom" role="group" aria-label="Zoom">
                   <button
                     type="button"
-                    className="board__tool"
-                    aria-pressed={showPacing}
-                    onClick={togglePacing}
+                    aria-label="Zoom out"
+                    disabled={zoom <= ZOOM_MIN}
+                    onClick={() => {
+                      stepZoom(-1);
+                    }}
                   >
-                    Pacing
+                    −
                   </button>
-                </>
+                  <button
+                    type="button"
+                    className="zoom__value"
+                    title="Reset zoom"
+                    onClick={() => {
+                      changeZoom(1);
+                    }}
+                  >
+                    {Math.round(zoom * 100)}%
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Zoom in"
+                    disabled={zoom >= ZOOM_MAX}
+                    onClick={() => {
+                      stepZoom(1);
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+              )}
+              {view === "board" && (
+                <button
+                  type="button"
+                  className="board__tool"
+                  aria-pressed={showPacing}
+                  onClick={togglePacing}
+                >
+                  Pacing
+                </button>
               )}
             </div>
           </div>
@@ -538,6 +557,8 @@ export function Board({ story }: { story: Story }) {
 
         {view === "lines" ? (
           <LinesView story={story} edit={edit} onOpenCard={openCard} />
+        ) : view === "threads" ? (
+          <ThreadsView story={story} edit={edit} zoom={zoom} onOpenCard={openCard} />
         ) : story.phases.length === 0 ? (
           <div className="board__empty">
             <p className="board__empty-title">This story is empty</p>

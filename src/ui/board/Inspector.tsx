@@ -7,7 +7,13 @@ import {
   type BeatLocation,
   type Story,
 } from "@core/model";
-import { CardTypePicker, HeadingInput, StatusPicker, TensionPicker } from "./BeatFields";
+import {
+  CardTypePicker,
+  HeadingInput,
+  StatusPicker,
+  TensionPicker,
+  ThreadsField,
+} from "./BeatFields";
 import { ScriptEditor } from "./ScriptEditor";
 
 interface InspectorProps {
@@ -90,6 +96,10 @@ export function Inspector({
           <dt>Tension</dt>
           <dd>
             <TensionPicker beat={beat} edit={edit} />
+          </dd>
+          <dt>Threads</dt>
+          <dd>
+            <ThreadsField beat={beat} story={story} edit={edit} />
           </dd>
         </dl>
 

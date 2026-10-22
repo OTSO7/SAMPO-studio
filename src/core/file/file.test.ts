@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   addCardType,
+  ensureThread,
   setLineDirection,
   setLineTake,
   storyMediaIds,
+  toggleThread,
   updateBeat,
   type LineBlock,
   type Story,
@@ -66,7 +68,9 @@ function sampleStory(): Story {
     line.id,
     "kuiskaten",
   );
-  return setLineTake(directed, line.id, `media:${"c".repeat(64)}.opus`);
+  const taken = setLineTake(directed, line.id, `media:${"c".repeat(64)}.opus`);
+  const { story: threaded, entityId } = ensureThread(taken, "Avain");
+  return toggleThread(threaded, beat.id, entityId);
 }
 
 /** Round-trips the story through the file format and parses the raw JSON for tampering. */
@@ -163,6 +167,20 @@ describe("deserializeStory", () => {
     ]);
   });
 
+  it("refuses cards pinned to a thread that does not exist", () => {
+    const file = rawFile();
+    const beat = file.story.phases[0]?.beats[1];
+    if (beat === undefined) throw new Error("fixture changed");
+    const ghost = "en_01JB3Z8Q4M6V2N7KXW9R0T5H1C";
+    beat["threads"] = [ghost];
+
+    const result = load(file);
+
+    expect(!result.ok && result.errors).toEqual([
+      `story.phases[0].beats[1].threads[0]: unknown thread ${ghost}`,
+    ]);
+  });
+
   it("still opens pictures stored inline by older versions", () => {
     const file = rawFile();
     const image = file.story.phases[0]?.beats[0]?.blocks.find((block) => block["type"] === "image");
@@ -238,7 +256,9 @@ describe("deserializeStory", () => {
 
     const result = load(file);
     expect(result.ok).toBe(false);
-    expect(!result.ok && result.errors.every((error) => /unknown entity/u.test(error))).toBe(true);
+    expect(
+      !result.ok && result.errors.every((error) => /unknown (entity|thread)/u.test(error)),
+    ).toBe(true);
   });
 
   it("rejects cards whose type does not exist", () => {

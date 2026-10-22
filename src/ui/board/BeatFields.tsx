@@ -1,5 +1,14 @@
-import { BEAT_STATUSES, updateBeat, type Beat, type Intensity, type Story } from "@core/model";
+import {
+  BEAT_STATUSES,
+  ensureThread,
+  toggleThread,
+  updateBeat,
+  type Beat,
+  type Intensity,
+  type Story,
+} from "@core/model";
 import { INTENSITY_NAMES } from "./intensity";
+import { SpeakerCombo } from "./SpeakerCombo";
 import { STATUS_NAMES } from "./status";
 
 const INTENSITIES: readonly Intensity[] = [0, 1, 2, 3, 4, 5];
@@ -31,6 +40,52 @@ export function CardTypePicker({ beat, story, edit }: FieldProps) {
         ))}
       </select>
     </label>
+  );
+}
+
+/**
+ * The story threads this card belongs to. Pick one or type a new name; no tags to type, no
+ * list to maintain: a thread exists while a card is pinned to it.
+ */
+export function ThreadsField({ beat, story, edit }: FieldProps) {
+  const threads = story.entities.filter((entity) => entity.kind === "thread");
+  const pinned = threads.filter((thread) => beat.threads?.includes(thread.id) === true);
+  return (
+    <div className="threads-field">
+      {pinned.map((thread) => (
+        <span key={thread.id} className="thread-chip" data-swatch={thread.color ?? "rose"}>
+          <span className="swatch-dot" aria-hidden="true" />
+          {thread.name}
+          <button
+            type="button"
+            className="thread-chip__remove"
+            aria-label={`Unpin from ${thread.name}`}
+            title="Unpin"
+            onClick={() => {
+              edit((s) => toggleThread(s, beat.id, thread.id));
+            }}
+          >
+            ×
+          </button>
+        </span>
+      ))}
+      <SpeakerCombo
+        value={null}
+        characters={threads.filter((thread) => !pinned.includes(thread))}
+        label="Add a story thread"
+        placeholder="+ Thread"
+        noun="thread"
+        onSelect={(threadId) => {
+          edit((s) => toggleThread(s, beat.id, threadId));
+        }}
+        onCreate={(name) => {
+          edit((s) => {
+            const { story: withThread, entityId } = ensureThread(s, name);
+            return toggleThread(withThread, beat.id, entityId);
+          });
+        }}
+      />
+    </div>
   );
 }
 

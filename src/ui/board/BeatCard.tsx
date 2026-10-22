@@ -62,6 +62,21 @@ export const BeatCard = memo(function BeatCard({
             {STATUS_NAMES[beat.status]}
           </span>
         )}
+        {beat.threads !== undefined && (
+          <span className="card__threads">
+            {beat.threads.map((threadId) => {
+              const thread = lookup.entityById.get(threadId);
+              return (
+                <span
+                  key={threadId}
+                  className="card__thread"
+                  data-swatch={thread?.color ?? "rose"}
+                  title={thread?.name}
+                />
+              );
+            })}
+          </span>
+        )}
         {beat.intensity !== undefined && (
           <span className="card__intensity" aria-label={`Tension ${beat.intensity} of 5`}>
             {[1, 2, 3, 4, 5].map((level) => (

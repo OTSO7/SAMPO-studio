@@ -1,6 +1,6 @@
 import type { Block } from "./block";
 import type { Entity } from "./entity";
-import type { BeatId, CardTypeId, PhaseId, StoryId } from "./ids";
+import type { BeatId, CardTypeId, EntityId, PhaseId, StoryId } from "./ids";
 import type { Swatch } from "./palette";
 
 /**
@@ -29,6 +29,8 @@ export interface Beat {
   readonly intensity?: Intensity;
   /** Left out while the card is a draft, the state every card starts in. */
   readonly status?: Exclude<BeatStatus, "draft">;
+  /** The story threads this card is pinned to, as `thread` entities. */
+  readonly threads?: readonly EntityId[];
   readonly blocks: readonly Block[];
 }
 

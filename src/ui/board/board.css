@@ -2476,3 +2476,83 @@ body.is-resizing-rows * {
 .script--large .script__direction:focus {
   opacity: 1;
 }
+
+/* ---------- story threads: the detective board ---------- */
+
+.threads-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* In the picker, "+ Thread" reads as a quiet button until it is typed into. */
+.threads-field .speaker__input {
+  width: 120px;
+  height: 26px;
+  padding: 0 var(--space-2);
+  border: 1px dashed var(--hairline-strong);
+  border-radius: 13px;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--bone);
+}
+
+.threads-field .speaker__input::placeholder {
+  color: var(--bone-muted);
+}
+
+.threads-field .speaker__input:focus {
+  border-style: solid;
+  border-color: var(--ochre);
+  outline: none;
+}
+
+.thread-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 26px;
+  padding: 0 var(--space-1) 0 var(--space-3);
+  border: 1px solid var(--swatch);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--swatch) 14%, transparent);
+  font-size: var(--text-sm);
+  animation: stamp-in var(--duration-slow) var(--ease-spring) both;
+}
+
+.thread-chip__remove {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--bone-faint);
+  cursor: pointer;
+}
+
+.thread-chip__remove:hover {
+  background: var(--ink-overlay);
+  color: var(--danger);
+}
+
+/* On a card: one dot per thread, in the thread's colour. */
+.card__threads {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: auto;
+}
+
+.card__threads + .card__intensity {
+  margin-left: var(--space-2);
+}
+
+.card__thread {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--swatch);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--swatch) 60%, transparent);
+}
