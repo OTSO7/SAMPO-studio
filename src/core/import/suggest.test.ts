@@ -49,6 +49,26 @@ describe("suggestRows", () => {
     ]);
   });
 
+  it("turns screenplay cues and quoted speech into lines on the card before them", () => {
+    const script = [
+      "Vaihe 1: Saapuminen",
+      "Aatos herää laiturilta.",
+      "AATOS: Missä minä olen?",
+      "MUSTA ROUTA: Täällä.",
+      'Mirja: "Älä liiku."',
+      "Pelitapahtumat: Pelaaja oppii liikkumaan.",
+    ].join("\n");
+
+    expect(suggestRows(script)).toEqual([
+      { role: "phase", text: "Saapuminen" },
+      { role: "beat", text: "Aatos herää laiturilta." },
+      { role: "line", speaker: "Aatos", text: "Missä minä olen?" },
+      { role: "line", speaker: "Musta Routa", text: "Täällä." },
+      { role: "line", speaker: "Mirja", text: '"Älä liiku."' },
+      { role: "beat", label: "Pelitapahtumat", text: "Pelaaja oppii liikkumaan." },
+    ]);
+  });
+
   it("accepts English headings", () => {
     expect(suggestRows("PHASE 1: Arrival\nLocation: Bog.\nFog rolls in.")).toEqual([
       { role: "phase", text: "Arrival" },

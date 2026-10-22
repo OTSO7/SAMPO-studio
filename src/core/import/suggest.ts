@@ -44,7 +44,10 @@ type Line =
   | { kind: "phase"; title: string; location?: string }
   | { kind: "title"; text: string }
   | { kind: "location"; text: string }
-  | { kind: "card"; label?: string; text: string; raw: string };
+  | { kind: "card"; label?: string; text: string; raw: string }
+  | { kind: "line"; speaker: string; text: string; raw: string };
+
+const MAX_SPEAKER_WORDS = 3;
 
 export function suggestRows(text: string): ImportRow[] {
   const lines = segmentText(text).map(classify);
@@ -67,6 +70,15 @@ export function suggestRows(text: string): ImportRow[] {
         return;
       case "location":
         rows.push({ role: "location", text: line.text });
+        return;
+      case "line":
+        // "ROUTA: Demo slice" opening a structured document is its title, not a speaker.
+        if (index === 0 && structured && looksLikeTitle(line.raw)) {
+          rows.push({ role: "title", text: line.raw });
+          return;
+        }
+        // Lines join the card before them, so a scene keeps its action and its dialogue.
+        rows.push({ role: "line", speaker: line.speaker, text: line.text });
         return;
       case "card": {
         const label =
@@ -107,6 +119,9 @@ function classify(line: string): Line {
   const label = LABEL.exec(line);
   const name = label?.[1]?.trim();
   const body = label?.[2]?.trim();
+  if (name !== undefined && body !== undefined && body !== "" && isSpeaker(name, body)) {
+    return { kind: "line", speaker: speakerName(name), text: body, raw: line };
+  }
   if (
     name !== undefined &&
     body !== undefined &&
@@ -117,6 +132,32 @@ function classify(line: string): Line {
     return { kind: "card", label: capitalize(name), text: body, raw: line };
   }
   return { kind: "card", text: line, raw: line };
+}
+
+/**
+ * Only the two conventions writers use for dialogue, so labels like "Gameplay:" stay cards:
+ * a screenplay cue in capitals ("AATOS: …", "MUSTA ROUTA: …"), or one name before quoted
+ * speech (`Elias: "Hei."`).
+ */
+function isSpeaker(name: string, body: string): boolean {
+  const words = name.split(/\s+/u);
+  const cue =
+    words.length <= MAX_SPEAKER_WORDS &&
+    name === name.toLocaleUpperCase() &&
+    /\p{Lu}/u.test(name) &&
+    !/\d/u.test(name);
+  const quoted = words.length === 1 && /^\p{Lu}/u.test(name) && /^["“”„«»]/u.test(body);
+  return cue || quoted;
+}
+
+/** "MUSTA ROUTA" -> "Musta Routa"; names written in mixed case are kept as written. */
+function speakerName(name: string): string {
+  if (name !== name.toLocaleUpperCase()) return name;
+  return name
+    .toLocaleLowerCase()
+    .split(/(\s+|-)/u)
+    .map(capitalize)
+    .join("");
 }
 
 /**
