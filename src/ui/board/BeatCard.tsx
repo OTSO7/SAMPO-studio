@@ -15,7 +15,7 @@ interface BeatCardProps {
 
 const MAX_PREVIEW_LINES = 3;
 
-/** A card on the board: number, heading, opening text and the start of its dialogue. */
+/** A card on the board: number, first picture, heading, opening text and dialogue. */
 export const BeatCard = memo(function BeatCard({
   beat,
   number,
@@ -29,6 +29,7 @@ export const BeatCard = memo(function BeatCard({
   const lead = beat.blocks.find((block) => block.type === "action")?.text ?? "";
   const lines = beat.blocks.filter((block) => block.type === "line");
   const notes = beat.blocks.filter((block) => block.type === "note").length;
+  const cover = beat.blocks.find((block) => block.type === "image");
   // The default type is the quiet one; only other types announce themselves.
   const typeName = type !== undefined && type.id !== lookup.defaultTypeId ? type.name : null;
 
@@ -58,6 +59,9 @@ export const BeatCard = memo(function BeatCard({
         )}
       </span>
 
+      {cover !== undefined && (
+        <img className="card__cover" src={cover.src} alt={cover.text} draggable={false} />
+      )}
       {beat.label !== undefined && <span className="card__label">{beat.label}</span>}
       {lead !== "" && <span className="card__text">{lead}</span>}
 
@@ -78,7 +82,7 @@ export const BeatCard = memo(function BeatCard({
         </span>
       )}
 
-      {lead === "" && lines.length === 0 && beat.label === undefined && (
+      {lead === "" && lines.length === 0 && beat.label === undefined && cover === undefined && (
         <span className="card__empty">Empty card</span>
       )}
 

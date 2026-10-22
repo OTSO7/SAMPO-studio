@@ -77,6 +77,8 @@ function blockToJson(block: Block) {
       };
     case "note":
       return { type: block.type, id: block.id, kind: block.kind, text: block.text };
+    case "image":
+      return { type: block.type, id: block.id, text: block.text, src: block.src };
   }
 }
 

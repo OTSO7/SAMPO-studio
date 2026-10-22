@@ -24,6 +24,10 @@ export function storyToMarkdown(story: Story, options: { includeNotes?: boolean 
       out.push(`### ${phaseIndex + 1}.${beatIndex + 1}${heading === "" ? "" : ` ${heading}`}`, "");
 
       for (const block of beat.blocks) {
+        if (block.type === "image") {
+          out.push(`*[Image${block.text.trim() === "" ? "" : `: ${block.text}`}]*`, "");
+          continue;
+        }
         if (block.text.trim() === "" && block.type !== "line") continue;
         if (block.type === "action") {
           out.push(block.text, "");

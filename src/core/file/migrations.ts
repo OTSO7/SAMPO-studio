@@ -10,6 +10,9 @@ import { CURRENT_VERSION } from "./format";
  */
 const MIGRATIONS: Readonly<Record<number, (story: unknown) => unknown>> = {
   1: fromFixedKindsToCardTypes,
+  // Version 3 adds image blocks. Older files need no change; the bump makes older apps refuse
+  // files with pictures in them instead of failing on an unknown block type.
+  2: (story) => story,
 };
 
 export function migrate(story: unknown, fromVersion: number): unknown {

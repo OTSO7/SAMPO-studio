@@ -164,7 +164,7 @@ function readBlock(r: Reader, value: unknown, path: string): Block | undefined {
 
   const id = r.id("block", o["id"], `${path}.id`);
   const text = r.string(o["text"], `${path}.text`);
-  const type = r.oneOf(o["type"], ["action", "line", "note"] as const, `${path}.type`);
+  const type = r.oneOf(o["type"], ["action", "line", "note", "image"] as const, `${path}.type`);
   if (id === undefined || text === undefined || type === undefined) return undefined;
 
   switch (type) {
@@ -182,6 +182,15 @@ function readBlock(r: Reader, value: unknown, path: string): Block | undefined {
     case "note": {
       const kind = r.oneOf(o["kind"], NOTE_KINDS, `${path}.kind`);
       return kind === undefined ? undefined : { type, id, kind, text };
+    }
+
+    case "image": {
+      const src = r.string(o["src"], `${path}.src`);
+      if (src === undefined) return undefined;
+      // Only embedded pictures: a file path or web address would break when the story moves.
+      if (!src.startsWith("data:image/"))
+        return r.fail(`${path}.src`, "expected an embedded image");
+      return { type, id, src, text };
     }
   }
 }

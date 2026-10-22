@@ -12,6 +12,7 @@ function baseSample(): Story {
   const [phase] = story.phases;
   const [beat] = phase?.beats ?? [];
   if (phase === undefined || beat === undefined) throw new Error("fixture changed");
+  const ids = deterministicIds();
 
   return {
     ...story,
@@ -27,7 +28,13 @@ function baseSample(): Story {
             intensity: 3,
             blocks: [
               ...beat.blocks,
-              { type: "note", id: deterministicIds().block(), kind: "question", text: "Sade?" },
+              { type: "note", id: ids.block(), kind: "question", text: "Sade?" },
+              {
+                type: "image",
+                id: ids.block(),
+                src: "data:image/webp;base64,UklGRg==",
+                text: "Yö",
+              },
             ],
           },
           ...phase.beats.slice(1),
@@ -124,6 +131,27 @@ describe("deserializeStory", () => {
     const result = load(file);
     expect(result.ok).toBe(false);
     expect(!result.ok && result.errors[0]).toMatch(/newer version of SAMPO/u);
+  });
+
+  it("only accepts pictures embedded in the file", () => {
+    const file = rawFile();
+    const image = file.story.phases[0]?.beats[0]?.blocks.find((block) => block["type"] === "image");
+    if (image === undefined) throw new Error("fixture changed");
+    image["src"] = "C:/Users/me/kuva.png";
+
+    const result = load(file);
+
+    expect(!result.ok && result.errors).toEqual([
+      "story.phases[0].beats[0].blocks[3].src: expected an embedded image",
+    ]);
+  });
+
+  it("opens version 2 files, which had no pictures, unchanged", () => {
+    const story = baseStory();
+    const file = rawFile(story);
+    file.version = 2;
+
+    expect(load(file)).toEqual({ ok: true, story });
   });
 
   it("reports every problem with its location", () => {

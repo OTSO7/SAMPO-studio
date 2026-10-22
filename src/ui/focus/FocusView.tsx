@@ -7,6 +7,7 @@ import { CardTypePicker, HeadingInput, TensionPicker } from "@ui/board/BeatField
 import { insertCard, type InsertKind } from "@ui/board/insert-card";
 import { ScriptEditor } from "@ui/board/ScriptEditor";
 import { buildLookup } from "@ui/board/story-lookup";
+import { useAddImages, useImageInput } from "@ui/board/use-images";
 import { EditableText } from "@ui/primitives/EditableText";
 import { Kbd } from "@ui/primitives/Kbd";
 import { useServices } from "@ui/services/use-services";
@@ -49,6 +50,7 @@ export function FocusView({ story, initialPhase = 0, onExit }: FocusViewProps) {
     },
     [store],
   );
+  useImageInput(useAddImages(edit), null);
 
   const go = useCallback(
     (target: number) => {
@@ -242,7 +244,7 @@ function FocusCard({
   edit: (recipe: (story: Story) => Story, group?: string) => void;
 }) {
   return (
-    <article className="focus-card" data-swatch={swatch}>
+    <article className="focus-card" data-swatch={swatch} data-beat-id={beat.id}>
       <header className="focus-card__head">
         <span className="focus-card__number">{number}</span>
         <HeadingInput beat={beat} edit={edit} className="focus-card__heading" />

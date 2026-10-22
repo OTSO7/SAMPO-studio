@@ -29,5 +29,17 @@ export interface NoteBlock {
   readonly text: string;
 }
 
-export type Block = ActionBlock | LineBlock | NoteBlock;
+/** A picture on the card: concept art, a reference photo, a storyboard frame. */
+export interface ImageBlock {
+  readonly type: "image";
+  readonly id: BlockId;
+  /** The picture itself as a data URL, so a story stays one self-contained file. */
+  readonly src: string;
+  /** Caption shown under the picture. */
+  readonly text: string;
+}
+
+export type Block = ActionBlock | LineBlock | NoteBlock | ImageBlock;
 export type BlockType = Block["type"];
+/** Blocks that are written rather than pictured; these can be turned into one another. */
+export type TextBlockType = Exclude<BlockType, "image">;

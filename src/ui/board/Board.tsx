@@ -41,6 +41,7 @@ import { QuickFind } from "./QuickFind";
 import { StorySettings } from "./StorySettings";
 import { buildLookup } from "./story-lookup";
 import { useCardDrag, type DropTarget } from "./use-card-drag";
+import { useAddImages, useImageInput } from "./use-images";
 
 import "./board.css";
 
@@ -201,6 +202,9 @@ export function Board({ story }: { story: Story }) {
     },
     [store],
   );
+
+  const addImages = useAddImages(edit);
+  useImageInput(addImages, view === "board" ? selectedId : null);
 
   const drop = useCallback(
     (beatId: BeatId, target: DropTarget) => {

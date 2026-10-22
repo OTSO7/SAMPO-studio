@@ -42,6 +42,19 @@ export function AppShell() {
     };
   }, []);
 
+  // A file dropped anywhere but a card would make the webview open it in place of the app.
+  useEffect(() => {
+    const keepApp = (event: DragEvent) => {
+      if (event.dataTransfer?.types.includes("Files") === true) event.preventDefault();
+    };
+    window.addEventListener("dragover", keepApp);
+    window.addEventListener("drop", keepApp);
+    return () => {
+      window.removeEventListener("dragover", keepApp);
+      window.removeEventListener("drop", keepApp);
+    };
+  }, []);
+
   // Double-clicking a .sampo file starts the app with that file.
   useEffect(() => {
     void openLaunchFile(deps);

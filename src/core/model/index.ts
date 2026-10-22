@@ -1,4 +1,13 @@
-export type { ActionBlock, Block, BlockType, LineBlock, NoteBlock, NoteKind } from "./block";
+export type {
+  ActionBlock,
+  Block,
+  BlockType,
+  ImageBlock,
+  LineBlock,
+  NoteBlock,
+  NoteKind,
+  TextBlockType,
+} from "./block";
 export { NOTE_KINDS } from "./block";
 export type { BeatLocation, BeatPatch, NewBeat, NewBlock } from "./edit";
 export {

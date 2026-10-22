@@ -1,4 +1,4 @@
-import type { Block } from "./block";
+import type { Block, TextBlockType } from "./block";
 import type { Entity } from "./entity";
 import { defaultCardType } from "./factories";
 import {
@@ -239,7 +239,8 @@ function mapBeats(story: Story, map: (beat: Beat) => Beat): Story {
 export type NewBlock =
   | { readonly type: "action"; readonly text?: string }
   | { readonly type: "line"; readonly speaker: EntityId | null; readonly text?: string }
-  | { readonly type: "note"; readonly text?: string };
+  | { readonly type: "note"; readonly text?: string }
+  | { readonly type: "image"; readonly src: string; readonly text?: string };
 
 /** Inserts a block into a beat at `index` (default: the end) and returns its id. */
 export function addBlock(
@@ -273,9 +274,9 @@ export function removeBlock(story: Story, blockId: BlockId): Story {
 }
 
 /** Turns a block into prose, a spoken line or a note, keeping its text and id. */
-export function setBlockType(story: Story, blockId: BlockId, type: Block["type"]): Story {
+export function setBlockType(story: Story, blockId: BlockId, type: TextBlockType): Story {
   return mapBlocks(story, blockId, (block): Block => {
-    if (block.type === type) return block;
+    if (block.type === type || block.type === "image") return block;
     const { id, text } = block;
     if (type === "line") return { type, id, text, speaker: null };
     if (type === "note") return { type, id, text, kind: "idea" };
@@ -422,5 +423,6 @@ function toBlock(block: NewBlock, ids: IdFactory): Block {
   const text = block.text ?? "";
   if (block.type === "line") return { type: "line", id, speaker: block.speaker, text };
   if (block.type === "note") return { type: "note", id, kind: "idea", text };
+  if (block.type === "image") return { type: "image", id, src: block.src, text };
   return { type: "action", id, text };
 }

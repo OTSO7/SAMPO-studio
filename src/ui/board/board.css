@@ -358,6 +358,26 @@ input.editable {
   color: var(--bone-faint);
 }
 
+/* The first picture works as the card's storyboard frame. */
+.card__cover {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  pointer-events: none;
+}
+
+/* A picture dragged in from Explorer is about to land here. */
+.card.is-drop-target,
+.focus-card.is-drop-target,
+.inspector.is-drop-target {
+  outline: 2px dashed var(--signal);
+  outline-offset: -2px;
+  background: var(--signal-wash);
+}
+
 /* The card that follows the pointer while dragging. */
 .card-ghost {
   position: fixed;
@@ -661,6 +681,100 @@ body.is-resizing .inspector__resizer::after {
 .script__add button:hover {
   border-color: var(--bone-faint);
   color: var(--bone);
+}
+
+.script__block--image {
+  margin: 0;
+}
+
+.script__image {
+  display: block;
+  padding: 0;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  cursor: zoom-in;
+  overflow: hidden;
+}
+
+.script__image:hover,
+.script__image:focus-visible {
+  border-color: var(--ochre);
+  outline: none;
+}
+
+.script__image img {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+}
+
+.script--large .script__image img {
+  max-height: 56vh;
+}
+
+.script__caption-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.script__caption {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-1) 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: none;
+  font-size: var(--text-sm);
+  color: var(--bone-muted);
+}
+
+.script__caption:hover {
+  border-bottom-color: var(--hairline);
+}
+
+.script__caption:focus {
+  border-bottom-color: var(--ochre);
+  outline: none;
+  color: var(--bone);
+}
+
+.image-viewer {
+  max-width: none;
+  max-height: none;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: var(--space-6);
+  border: 0;
+  background: none;
+  cursor: zoom-out;
+}
+
+.image-viewer[open] {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-3);
+}
+
+.image-viewer::backdrop {
+  background: rgb(9 10 11 / 92%);
+}
+
+.image-viewer img {
+  max-width: calc(100vw - 2 * var(--space-6));
+  max-height: calc(100vh - 2 * var(--space-6) - 3em);
+  object-fit: contain;
+}
+
+.image-viewer__caption {
+  margin: 0;
+  font-family: var(--font-story);
+  font-size: var(--text-md);
+  color: var(--bone-muted);
 }
 
 .script__hint {
