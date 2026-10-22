@@ -149,15 +149,24 @@ export function Board({ story }: { story: Story }) {
     zoomRef.current = zoom;
   }, [zoom]);
 
-  // Ctrl + wheel (or a trackpad pinch) zooms around the pointer, as in design tools: the
-  // spot under the cursor stays under the cursor.
-  const hasColumns = view === "board" && story.phases.length > 0;
+  // Navigation as in Photoshop: Alt + wheel zooms around the pointer, so the spot under the
+  // cursor stays under the cursor, and Ctrl + wheel scrolls sideways through the phases.
+  const hasColumns =
+    (view === "board" && story.phases.length > 0) ||
+    (view === "threads" && story.entities.some((entity) => entity.kind === "thread"));
   useEffect(() => {
-    const scroller = document.querySelector<HTMLElement>(".board__scroller");
+    const scroller = document.querySelector<HTMLElement>(
+      view === "threads" ? ".corkboard__wall" : ".board__scroller",
+    );
     if (!hasColumns || scroller === null) return undefined;
 
     const onWheel = (event: WheelEvent) => {
-      if (!(event.ctrlKey || event.metaKey)) return;
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        scroller.scrollLeft += event.deltaY + event.deltaX;
+        return;
+      }
+      if (!event.altKey) return;
       event.preventDefault();
 
       const current = zoomRef.current;
@@ -186,7 +195,7 @@ export function Board({ story }: { story: Story }) {
     return () => {
       scroller.removeEventListener("wheel", onWheel);
     };
-  }, [hasColumns, changeZoom]);
+  }, [hasColumns, changeZoom, view]);
   const lookup = useMemo(() => buildLookup(story), [story]);
   const togglePacing = useCallback(() => {
     setShowPacing((current) => {
