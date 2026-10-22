@@ -108,6 +108,7 @@ function readEntity(r: Reader, value: unknown, path: string): Entity | undefined
   const name = r.string(o["name"], `${path}.name`);
   const aliases = r.each(o["aliases"], `${path}.aliases`, (item, p) => r.string(item, p));
   const description = r.optionalString(o["description"], `${path}.description`);
+  const actor = r.optionalString(o["actor"], `${path}.actor`);
   const color =
     o["color"] === undefined ? undefined : r.oneOf(o["color"], SWATCHES, `${path}.color`);
 
@@ -119,6 +120,7 @@ function readEntity(r: Reader, value: unknown, path: string): Entity | undefined
     aliases,
     ...(color === undefined ? {} : { color }),
     ...(description === undefined ? {} : { description }),
+    ...(actor === undefined ? {} : { actor }),
   };
 }
 

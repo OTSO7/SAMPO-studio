@@ -15,20 +15,23 @@ export interface VoiceLine {
   readonly seconds: number;
   /** The card's status, so the studio records only lines from final cards. */
   readonly status: BeatStatus;
+  /** The character's voice actor, empty until cast. */
+  readonly actor: string;
 }
 
 const STATUS_LABELS = { draft: "Draft", review: "Review", final: "Final" } as const;
 
 /** Every spoken line in story order, as a recording script needs it. */
 export function collectVoiceLines(story: Story): VoiceLine[] {
-  const names = new Map(story.entities.map((entity: Entity) => [entity.id, entity.name]));
+  const byId = new Map(story.entities.map((entity: Entity) => [entity.id, entity]));
 
   return story.phases.flatMap((phase, phaseIndex) =>
     phase.beats.flatMap((beat, beatIndex) =>
       beat.blocks
         .filter((block): block is LineBlock => block.type === "line")
         .map((line) => {
-          const character = line.speaker === null ? "" : (names.get(line.speaker) ?? "");
+          const speaker = line.speaker === null ? undefined : byId.get(line.speaker);
+          const character = speaker?.name ?? "";
           return {
             id: voiceLineId(character, line.id),
             blockId: line.id,
@@ -42,6 +45,7 @@ export function collectVoiceLines(story: Story): VoiceLine[] {
             heading: beat.label ?? "",
             seconds: estimateSeconds(line.text),
             status: beat.status ?? "draft",
+            actor: speaker?.actor ?? "",
           };
         }),
     ),
@@ -77,6 +81,7 @@ const COLUMNS: readonly (readonly [string, keyof VoiceLine])[] = [
   ["Phase", "phase"],
   // Last, so sheets built on the earlier columns keep working.
   ["Status", "status"],
+  ["Actor", "actor"],
 ];
 
 /**

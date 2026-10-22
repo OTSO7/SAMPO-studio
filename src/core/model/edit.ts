@@ -341,13 +341,16 @@ function mapBlocks(story: Story, blockId: BlockId, map: (block: Block) => Block)
 export function updateEntity(
   story: Story,
   entityId: EntityId,
-  patch: { readonly name?: string; readonly color?: Swatch },
+  /** An empty `actor` removes the casting. */
+  patch: { readonly name?: string; readonly color?: Swatch; readonly actor?: string },
 ): Story {
   return {
     ...story,
-    entities: story.entities.map((entity) =>
-      entity.id === entityId ? { ...entity, ...patch } : entity,
-    ),
+    entities: story.entities.map((entity) => {
+      if (entity.id !== entityId) return entity;
+      const { actor, ...rest } = { ...entity, ...patch };
+      return actor === undefined || actor.trim() === "" ? rest : { ...rest, actor };
+    }),
   };
 }
 

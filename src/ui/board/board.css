@@ -1480,11 +1480,33 @@ body.is-resizing-rows * {
   user-select: text;
 }
 
-.settings-row__name:hover {
+/* Cast rows carry a voice actor next to the name. */
+.settings-row:has(.settings-row__actor) {
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto auto;
+}
+
+.settings-row__actor {
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  font-size: var(--text-sm);
+  color: var(--bone-muted);
+  user-select: text;
+}
+
+.settings-row__actor::placeholder {
+  color: var(--bone-faint);
+}
+
+.settings-row__name:hover,
+.settings-row__actor:hover {
   border-color: var(--hairline-strong);
 }
 
-.settings-row__name:focus {
+.settings-row__name:focus,
+.settings-row__actor:focus {
   border-color: var(--ochre);
   background: var(--ink-raised);
   outline: none;

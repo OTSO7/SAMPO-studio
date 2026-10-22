@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { setLineDirection, updateBeat, type BeatId, type BlockId, type LineBlock } from "../model";
+import {
+  setLineDirection,
+  updateBeat,
+  updateEntity,
+  type BeatId,
+  type BlockId,
+  type LineBlock,
+} from "../model";
 import { sampleStory } from "../testing/sample-story";
 import { storyToMarkdown } from "./script-markdown";
 import { collectVoiceLines, estimateSeconds, voiceLineId, voiceLinesToCsv } from "./voice-lines";
@@ -29,6 +36,16 @@ describe("collectVoiceLines", () => {
     if (card === undefined) throw new Error("fixture changed");
     const reviewed = updateBeat(story, card.id, { status: "review" });
     expect(collectVoiceLines(reviewed).map((line) => line.status)).toEqual(["review", "draft"]);
+  });
+
+  it("names the voice actor of each line's character", () => {
+    const vartija = story.entities.find((entity) => entity.name === "Vartija");
+    if (vartija === undefined) throw new Error("fixture changed");
+    const cast = updateEntity(story, vartija.id, { actor: "Anna Ääni" });
+    expect(collectVoiceLines(cast).map((line) => line.actor)).toEqual(["Anna Ääni", ""]);
+    expect(updateEntity(cast, vartija.id, { actor: " " }).entities).not.toContainEqual(
+      expect.objectContaining({ actor: expect.anything() }),
+    );
   });
 
   it("includes the direction", () => {
@@ -70,15 +87,16 @@ describe("voiceLinesToCsv", () => {
         heading: "",
         seconds: 2,
         status: "final",
+        actor: "Anna Ääni",
       },
     ]);
     expect(
       csv.startsWith(
-        "\uFEFFID,Character,Line,Direction,Seconds,Card,Card heading,Phase,Status\r\n",
+        "\uFEFFID,Character,Line,Direction,Seconds,Card,Card heading,Phase,Status,Actor\r\n",
       ),
     ).toBe(true);
     expect(csv).toContain(
-      'VO_A_0001,A,"Hän sanoi ""ei"", ja lähti.\nHiljaisuus.",,2,1.1,,1. Alku,Final\r\n',
+      'VO_A_0001,A,"Hän sanoi ""ei"", ja lähti.\nHiljaisuus.",,2,1.1,,1. Alku,Final,Anna Ääni\r\n',
     );
   });
 });

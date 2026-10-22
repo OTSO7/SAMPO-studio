@@ -13,4 +13,4 @@ export const FORMAT_ID = "sampo-story";
  * Bump when the shape of the saved story changes, and add a migration from the previous
  * version in `migrations.ts` so older files keep opening.
  */
-export const CURRENT_VERSION = 4;
+export const CURRENT_VERSION = 5;

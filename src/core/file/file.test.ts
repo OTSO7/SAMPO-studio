@@ -17,7 +17,7 @@ function baseSample(): Story {
   return {
     ...story,
     entities: story.entities.map((entity, i) =>
-      i === 0 ? { ...entity, description: "Majakan entinen vartija." } : entity,
+      i === 0 ? { ...entity, description: "Majakan entinen vartija.", actor: "Anna Ääni" } : entity,
     ),
     phases: [
       {

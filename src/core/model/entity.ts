@@ -17,4 +17,6 @@ export interface Entity {
   readonly description?: string;
   /** Used to tell speakers apart in dialogue. */
   readonly color?: Swatch;
+  /** Who voices the character, so recording sessions can be booked per actor. */
+  readonly actor?: string;
 }

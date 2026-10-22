@@ -41,6 +41,7 @@ function entityToJson(entity: Entity) {
     aliases: entity.aliases,
     ...optional("color", entity.color),
     ...optional("description", entity.description),
+    ...optional("actor", entity.actor),
   };
 }
 

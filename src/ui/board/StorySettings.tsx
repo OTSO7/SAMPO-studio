@@ -159,6 +159,16 @@ export function StorySettings({ story, edit, onClose }: StorySettingsProps) {
                         edit((s) => updateEntity(s, entity.id, { name }), `entity:${entity.id}`);
                       }}
                     />
+                    <input
+                      className="settings-row__actor"
+                      aria-label={`Voice actor for ${entity.name}`}
+                      placeholder="Voice actor"
+                      value={entity.actor ?? ""}
+                      onChange={(event) => {
+                        const actor = event.target.value;
+                        edit((s) => updateEntity(s, entity.id, { actor }), `actor:${entity.id}`);
+                      }}
+                    />
                     <span className="settings-row__count">
                       {linesOf(entity.id)} {linesOf(entity.id) === 1 ? "line" : "lines"}
                     </span>
