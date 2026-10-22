@@ -20,7 +20,8 @@
         "center": true,
         "maximized": true,
         "backgroundColor": "#090A0B",
-        "dragDropEnabled": false
+        "dragDropEnabled": false,
+        "decorations": false
       }
     ],
     "security": {

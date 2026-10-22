@@ -9,8 +9,54 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  padding: 0 var(--space-4);
+  padding: 0 0 0 var(--space-4);
   border-bottom: 1px solid var(--hairline);
+  user-select: none;
+}
+
+/* Window buttons sit flush in the corner, Windows-sized so they are easy to hit. */
+.shell__window {
+  display: flex;
+  align-self: stretch;
+  margin-left: auto;
+}
+
+.shell__focus + .shell__window {
+  margin-left: var(--space-2);
+}
+
+.shell__window-button {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  border: 0;
+  background: none;
+  color: var(--bone-muted);
+  cursor: default;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.shell__window-button svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1;
+}
+
+.shell__window-button:hover {
+  background: var(--ink-overlay);
+  color: var(--bone);
+}
+
+.shell__window-button--close:hover {
+  background: var(--danger);
+  color: var(--bone);
+}
+
+.shell__window-button:focus-visible {
+  outline: 1px solid var(--ochre-text);
+  outline-offset: -1px;
 }
 
 /* A short ochre stroke under the wordmark, echoing the HUD's marker lines. */
