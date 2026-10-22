@@ -1,6 +1,6 @@
 [package]
 name = "sampo-studio"
-version = "0.4.1"
+version = "0.4.2"
 description = "Story and dialogue boards for game teams"
 authors = ["SAMPO Studio"]
 edition = "2024"
