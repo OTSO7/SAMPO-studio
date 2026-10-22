@@ -14,12 +14,15 @@ import {
 } from "./store";
 
 export type SaveChoice = "save" | "discard" | "cancel";
+export type ConflictChoice = "overwrite" | "save-as" | "reload" | "cancel";
 
 export interface Confirm {
   /** Asks whether unsaved changes may be thrown away. */
   discardChanges(): Promise<boolean>;
   /** Asks what to do with unsaved changes before closing `name`. */
   saveChanges(name: string): Promise<SaveChoice>;
+  /** Asks what to do when another program saved `name` after it was opened. */
+  fileChanged(name: string): Promise<ConflictChoice>;
 }
 
 export interface AppDeps {
@@ -177,7 +180,29 @@ export async function importScript(deps: AppDeps, text: string): Promise<boolean
   return true;
 }
 
-export async function save(deps: AppDeps, options: { saveAs?: boolean } = {}): Promise<boolean> {
+/**
+ * Called when a save finds that another program changed the file, e.g. a teammate's save
+ * synced in. Autosave stays paused until the user keeps their version or loads the file.
+ */
+export async function resolveSaveConflict(deps: AppDeps): Promise<boolean> {
+  const { path } = deps.document.getState();
+  if (path === null) return false;
+  switch (await deps.confirm.fileChanged(fileName(path))) {
+    case "overwrite":
+      return save(deps, { overwrite: true });
+    case "save-as":
+      return save(deps, { saveAs: true });
+    case "reload":
+      return applyOpen(deps, () => deps.files.openPath(path), path);
+    case "cancel":
+      return false;
+  }
+}
+
+export async function save(
+  deps: AppDeps,
+  options: { saveAs?: boolean; overwrite?: boolean } = {},
+): Promise<boolean> {
   const outcome = await saveDocument(deps.document, deps.files, options);
   if (outcome === "failed") {
     const status = deps.document.getState().saveStatus;
@@ -220,6 +245,8 @@ function describeFileError(error: unknown): string {
       return "That file type cannot be exported to";
     case "too_large":
       return "File is too large to open";
+    case "changed_on_disk":
+      return "File was changed by another program";
     case "io":
     case "unknown":
       return error.message;

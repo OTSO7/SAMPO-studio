@@ -19,17 +19,17 @@ export function Statusbar({ onShowShortcuts }: { onShowShortcuts: () => void }) 
   let saveLabel: string | null = null;
   if (status.kind === "saving") saveLabel = "Saving…";
   else if (status.kind === "failed") saveLabel = "Save failed";
+  else if (status.kind === "conflict") saveLabel = "Changed on disk";
   else if (dirty) saveLabel = "Edited";
   else if (status.kind === "saved") saveLabel = `Saved ${timeFormat.format(status.at)}`;
+  const error = status.kind === "failed" || status.kind === "conflict";
 
   return (
     <footer className="shell__statusbar">
       <span>{file}</span>
       <span className="shell__status-right">
         {saveLabel !== null && (
-          <span className={status.kind === "failed" ? "shell__status--error" : undefined}>
-            {saveLabel}
-          </span>
+          <span className={error ? "shell__status--error" : undefined}>{saveLabel}</span>
         )}
         <button type="button" className="shell__status-button" onClick={onShowShortcuts}>
           Shortcuts <kbd className="kbd">?</kbd>

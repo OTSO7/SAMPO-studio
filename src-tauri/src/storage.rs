@@ -7,6 +7,7 @@ use std::fmt;
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::time::UNIX_EPOCH;
 
 pub const EXTENSION: &str = "sampo";
 
@@ -104,6 +105,20 @@ pub fn read_story(path: &Path) -> Result<String> {
     }
 
     fs::read_to_string(path).map_err(|err| StorageError::io(path, err))
+}
+
+/// When the story was last written, in milliseconds since the Unix epoch, or `None` if it does
+/// not exist. The app compares this before saving to notice another program's save.
+pub fn modified_ms(path: &Path) -> Result<Option<u64>> {
+    ensure_story_extension(path)?;
+    match fs::metadata(path).and_then(|meta| meta.modified()) {
+        Ok(time) => Ok(Some(
+            time.duration_since(UNIX_EPOCH)
+                .map_or(0, |since| since.as_millis() as u64),
+        )),
+        Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(err) => Err(StorageError::io(path, err)),
+    }
 }
 
 /// Writes `contents` to `path` so that a crash or power cut can never leave a half-written
@@ -288,6 +303,16 @@ mod tests {
             let err = write_export_atomic(&dir.path(name), "x").unwrap_err();
             assert_eq!(err.code(), "unsupported_export", "{name}");
         }
+    }
+
+    #[test]
+    fn reports_modification_time_and_missing_files() {
+        let dir = TempDir::new();
+        let path = dir.path("Routa.sampo");
+
+        assert_eq!(modified_ms(&path).unwrap(), None);
+        write_story_atomic(&path, "story").unwrap();
+        assert!(modified_ms(&path).unwrap().is_some_and(|ms| ms > 0));
     }
 
     #[test]

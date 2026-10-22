@@ -13,6 +13,7 @@ import { ShortcutsSheet } from "./ShortcutsSheet";
 import { StartScreen } from "./StartScreen";
 import { Statusbar } from "./Statusbar";
 import { Titlebar } from "./Titlebar";
+import { useSaveConflict } from "./use-save-conflict";
 import { useShortcuts } from "./use-shortcuts";
 import { useUpdateCheck } from "./use-update-check";
 
@@ -24,6 +25,7 @@ export function AppShell() {
   const [focusing, setFocusing] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   useShortcuts(deps);
+  useSaveConflict(deps);
   useUpdateCheck(prompts, deps.notices);
 
   // F11 toggles full screen, like a browser or a media player.

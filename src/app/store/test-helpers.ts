@@ -33,8 +33,22 @@ export class ControlledHost implements FileHost {
     if (this.failWith !== null) return Promise.reject(this.failWith);
     this.writes.push({ path, contents });
     this.files.set(path, contents);
+    this.modified.set(path, ++this.clock);
     if (!this.holdWrites) return Promise.resolve();
     return new Promise<void>((resolve) => this.held.push(resolve));
+  }
+
+  private clock = 0;
+  private readonly modified = new Map<string, number>();
+
+  modifiedAt(path: string) {
+    return Promise.resolve(this.modified.get(path) ?? null);
+  }
+
+  /** Another program, e.g. a synced teammate's copy, saves over the file. */
+  saveElsewhere(path: string, contents: string) {
+    this.files.set(path, contents);
+    this.modified.set(path, ++this.clock);
   }
 
   exportAnswer: string | null = null;

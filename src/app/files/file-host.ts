@@ -11,6 +11,8 @@ export interface FileHost {
   pickSavePath(suggestedName: string): Promise<string | null>;
   readText(path: string): Promise<string>;
   writeText(path: string, contents: string): Promise<void>;
+  /** When the story file was last written, in ms; `null` when it does not exist. */
+  modifiedAt(path: string): Promise<number | null>;
   /** Resolves to `null` when the user cancels. */
   pickExportPath(suggestedName: string, format: ExportFormat): Promise<string | null>;
   writeExport(path: string, contents: string): Promise<void>;
@@ -21,7 +23,13 @@ export interface FileHost {
 export type ExportFormat = "csv" | "md";
 
 export type FileErrorCode =
-  "not_found" | "not_a_story_file" | "unsupported_export" | "too_large" | "io" | "unknown";
+  | "not_found"
+  | "not_a_story_file"
+  | "unsupported_export"
+  | "too_large"
+  | "io"
+  | "changed_on_disk"
+  | "unknown";
 
 /** A platform failure with a stable code the UI can turn into a friendly message. */
 export class FileError extends Error {

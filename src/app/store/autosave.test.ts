@@ -89,6 +89,28 @@ describe("startAutosave", () => {
     expect(timers.scheduled).toEqual([]);
   });
 
+  it("pauses after finding the file changed by another program", async () => {
+    const host = new ControlledHost();
+    const timers = new ManualTimers();
+    const store = createDocumentStore();
+    const files = storyFilesFor(host);
+    host.saveElsewhere("D:/Routa.sampo", "{}");
+    await files.openPath("D:/Routa.sampo");
+    loadDocument(store, story, "D:/Routa.sampo");
+    startAutosave(store, files, { delayMs: 2000, timers });
+    host.saveElsewhere("D:/Routa.sampo", "theirs");
+
+    editStory(store, rename("Mine"));
+    timers.fireAll();
+    await settle();
+    expect(store.getState().saveStatus).toEqual({ kind: "conflict" });
+
+    editStory(store, rename("Mine 2"));
+    timers.fireAll();
+    await settle();
+    expect(host.files.get("D:/Routa.sampo")).toBe("theirs");
+  });
+
   it("stops listening when stopped", () => {
     const { timers, store, autosave } = setup();
 

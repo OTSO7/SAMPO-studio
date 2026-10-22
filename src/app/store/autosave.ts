@@ -47,7 +47,7 @@ export function startAutosave(
 
   const shouldSave = () => {
     const state = store.getState();
-    return state.path !== null && isDirty(state);
+    return state.path !== null && isDirty(state) && state.saveStatus.kind !== "conflict";
   };
 
   const cancelTimer = () => {

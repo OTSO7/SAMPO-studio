@@ -11,8 +11,10 @@ import {
   importScript,
   newStory,
   openStory,
+  resolveSaveConflict,
   save,
   type AppDeps,
+  type ConflictChoice,
   type SaveChoice,
 } from "./commands";
 import { FileError } from "./files";
@@ -23,7 +25,11 @@ import { ControlledHost, storyFilesFor } from "./store/test-helpers";
 const SCRIPT = "VAIHE 1: Alku\n\nAatos herää metsässä.";
 const existing = sampleStory();
 
-function setup({ discard = true, choice = "save" as SaveChoice } = {}) {
+function setup({
+  discard = true,
+  choice = "save" as SaveChoice,
+  conflict = "cancel" as ConflictChoice,
+} = {}) {
   const host = new ControlledHost();
   const asked: string[] = [];
   const deps: AppDeps = {
@@ -38,6 +44,10 @@ function setup({ discard = true, choice = "save" as SaveChoice } = {}) {
       saveChanges: (name) => {
         asked.push(`save ${name}`);
         return Promise.resolve(choice);
+      },
+      fileChanged: (name) => {
+        asked.push(`changed ${name}`);
+        return Promise.resolve(conflict);
       },
     },
   };
@@ -165,6 +175,48 @@ describe("save", () => {
       title: "Save failed",
       details: ["Disk full"],
     });
+  });
+});
+
+describe("save conflicts", () => {
+  async function openedThenChangedElsewhere(conflict: ConflictChoice) {
+    const env = setup({ conflict });
+    env.host.saveElsewhere("D:/Routa.sampo", serializeStory(existing));
+    await openStoryAt(env.deps, "D:/Routa.sampo");
+    editStory(env.deps.document, (s) => ({ ...s, title: "Mine" }));
+    env.host.saveElsewhere("D:/Routa.sampo", serializeStory({ ...existing, title: "Theirs" }));
+    return env;
+  }
+
+  it("does not overwrite another program's save", async () => {
+    const { host, deps } = await openedThenChangedElsewhere("cancel");
+
+    expect(await save(deps)).toBe(false);
+
+    expect(deps.document.getState().saveStatus).toEqual({ kind: "conflict" });
+    expect(host.files.get("D:/Routa.sampo")).toMatch(/"title": "Theirs"/u);
+    expect(deps.notices.getState().notice).toBeNull();
+  });
+
+  it("keeps the user's version on Keep mine", async () => {
+    const { host, deps, asked } = await openedThenChangedElsewhere("overwrite");
+    await save(deps);
+
+    expect(await resolveSaveConflict(deps)).toBe(true);
+
+    expect(asked).toEqual(["changed Routa.sampo"]);
+    expect(host.files.get("D:/Routa.sampo")).toMatch(/"title": "Mine"/u);
+    expect(isDirty(deps.document.getState())).toBe(false);
+  });
+
+  it("loads the file from disk on Load from disk", async () => {
+    const { deps } = await openedThenChangedElsewhere("reload");
+    await save(deps);
+
+    expect(await resolveSaveConflict(deps)).toBe(true);
+
+    expect(deps.document.getState().story?.title).toBe("Theirs");
+    expect(isDirty(deps.document.getState())).toBe(false);
   });
 });
 

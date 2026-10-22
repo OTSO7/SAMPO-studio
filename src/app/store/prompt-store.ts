@@ -1,4 +1,4 @@
-import type { Confirm, SaveChoice } from "../commands";
+import type { Confirm, ConflictChoice, SaveChoice } from "../commands";
 import { createStore, type Store } from "./create-store";
 
 export interface PromptAction<T> {
@@ -73,6 +73,18 @@ export function createPromptConfirm(store: PromptStore): Confirm {
           { label: "Don't save", value: "discard", tone: "danger" },
           { label: "Cancel", value: "cancel" },
           { label: "Save", value: "save", tone: "primary" },
+        ],
+        cancelValue: "cancel",
+      }),
+
+    fileChanged: (name) =>
+      ask<ConflictChoice>(store, {
+        title: "File changed on disk",
+        message: `Another program saved “${name}” after you opened it. Autosave is paused.`,
+        actions: [
+          { label: "Load from disk", value: "reload", tone: "danger" },
+          { label: "Save as copy", value: "save-as" },
+          { label: "Keep mine", value: "overwrite", tone: "primary" },
         ],
         cancelValue: "cancel",
       }),

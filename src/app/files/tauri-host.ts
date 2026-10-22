@@ -67,6 +67,14 @@ export const tauriFileHost: FileHost = {
     }
   },
 
+  async modifiedAt(path) {
+    try {
+      return await invoke<number | null>("story_file_modified", { path });
+    } catch (error) {
+      throw toFileError(error);
+    }
+  },
+
   async pickExportPath(suggestedName, format) {
     return save({ defaultPath: suggestedName, filters: EXPORT_FILTERS[format] });
   },

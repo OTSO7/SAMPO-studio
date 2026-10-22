@@ -19,6 +19,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::read_story_file,
             commands::write_story_file,
+            commands::story_file_modified,
             commands::write_export_file,
             commands::launch_file
         ])

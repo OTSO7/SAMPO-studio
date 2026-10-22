@@ -36,6 +36,11 @@ pub fn write_story_file(path: PathBuf, contents: String) -> Result<(), CommandEr
 }
 
 #[tauri::command(async)]
+pub fn story_file_modified(path: PathBuf) -> Result<Option<u64>, CommandError> {
+    Ok(storage::modified_ms(&path)?)
+}
+
+#[tauri::command(async)]
 pub fn write_export_file(path: PathBuf, contents: String) -> Result<(), CommandError> {
     Ok(storage::write_export_atomic(&path, &contents)?)
 }

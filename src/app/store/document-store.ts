@@ -5,7 +5,9 @@ export type SaveStatus =
   | { readonly kind: "idle" }
   | { readonly kind: "saving" }
   | { readonly kind: "saved"; readonly at: Date }
-  | { readonly kind: "failed"; readonly message: string };
+  | { readonly kind: "failed"; readonly message: string }
+  /** Another program saved the file; autosave waits until the user decides. */
+  | { readonly kind: "conflict" };
 
 export interface DocumentState {
   readonly story: Story | null;
@@ -141,6 +143,10 @@ export function markSaved(store: DocumentStore, path: string, revision: number, 
 
 export function markSaveFailed(store: DocumentStore, message: string): void {
   store.setState({ saveStatus: { kind: "failed", message } });
+}
+
+export function markSaveConflict(store: DocumentStore): void {
+  store.setState({ saveStatus: { kind: "conflict" } });
 }
 
 export function markSaveCancelled(store: DocumentStore): void {
