@@ -1689,16 +1689,6 @@ body.is-resizing-rows * {
   color: var(--bone-faint);
 }
 
-.board__tool--find {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.board__tool--find .kbd {
-  line-height: 1.3;
-}
-
 .zoom {
   display: inline-flex;
   border: 1px solid var(--hairline-strong);
@@ -1868,51 +1858,87 @@ body.is-resizing-rows * {
   margin-top: var(--space-2);
 }
 
-/* ---------- quick find ---------- */
+/* ---------- search ---------- */
 
-.find-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  display: grid;
-  justify-items: center;
-  align-items: start;
-  padding-top: 12vh;
-  background: rgb(0 0 0 / 45%);
-  animation: sheet-fade var(--duration-fast) var(--ease-out) both;
-}
-
-.find {
-  display: grid;
-  width: min(640px, calc(100% - 2 * var(--space-5)));
-  max-height: 70vh;
+/* Sits in the toolbar like a button at rest and widens when it has the cursor. */
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 240px;
+  height: 28px;
   border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-md);
-  background: var(--ink-overlay);
-  box-shadow: 0 30px 80px rgb(0 0 0 / 60%);
-  overflow: hidden;
-  animation: sheet-in var(--duration-base) var(--ease-out) both;
+  border-radius: var(--radius-sm);
+  background: var(--ink-raised);
+  transition:
+    width var(--duration-base) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
 }
 
-.find__input {
-  height: 52px;
-  padding: 0 var(--space-5);
+.search:hover {
+  border-color: var(--bone-faint);
+}
+
+.search:focus-within {
+  width: 360px;
+  border-color: var(--ochre);
+}
+
+.search__icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-left: var(--space-2);
+  fill: none;
+  stroke: var(--bone-faint);
+  stroke-width: 1.5;
+}
+
+.search__input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--space-2);
   border: 0;
-  border-bottom: 1px solid var(--hairline);
   background: none;
-  font-size: var(--text-lg);
+  font-size: var(--text-sm);
   user-select: text;
 }
 
-.find__input:focus {
+.search__input:focus {
   outline: none;
 }
 
-.find__results {
+.search__input::placeholder {
+  color: var(--bone-faint);
+}
+
+.search__input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.search__hint {
+  margin-right: var(--space-1);
+  line-height: 1.3;
+  pointer-events: none;
+}
+
+.search__results {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: -1px;
+  z-index: 60;
+  width: max(100%, 480px);
+  max-height: 60vh;
   margin: 0;
   padding: var(--space-1);
   overflow-y: auto;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-md);
+  background: var(--ink-overlay);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 55%);
   list-style: none;
+  animation: sheet-in var(--duration-fast) var(--ease-out) both;
 }
 
 .find__empty {
@@ -1969,14 +1995,4 @@ body.is-resizing-rows * {
   border-radius: 2px;
   background: var(--ochre-wash);
   color: var(--ochre-text);
-}
-
-.find__foot {
-  display: flex;
-  gap: var(--space-5);
-  padding: var(--space-2) var(--space-5);
-  border-top: 1px solid var(--hairline);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--bone-faint);
 }

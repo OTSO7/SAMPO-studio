@@ -72,7 +72,6 @@ export function Board({ story }: { story: Story }) {
   );
   const [zoom, setZoom] = useState(() => clampZoom(Number(readText("sampo.zoom") ?? "1")));
   const zoomRef = useRef(zoom);
-  const [finding, setFinding] = useState(false);
   /** Cards in other states fade back, so a review pass sees only what it needs. */
   const [statusFilter, setStatusFilter] = useState<BeatStatus | null>(null);
 
@@ -120,15 +119,12 @@ export function Board({ story }: { story: Story }) {
     [openCard, changeView],
   );
 
-  // Ctrl+K / Ctrl+F find, Ctrl + / - / 0 zoom. These work even while typing.
+  // Ctrl + / - / 0 zoom. These work even while typing.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
       const key = event.key.toLowerCase();
-      if (key === "k" || key === "f") {
-        event.preventDefault();
-        setFinding(true);
-      } else if (key === "=" || key === "+") {
+      if (key === "=" || key === "+") {
         event.preventDefault();
         stepZoom(1);
       } else if (key === "-") {
@@ -306,7 +302,7 @@ export function Board({ story }: { story: Story }) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (isTyping(event.target) || event.ctrlKey || event.metaKey || dragging !== null) return;
-      if (settingsOpen || finding || view !== "board") return;
+      if (settingsOpen || view !== "board") return;
       const current = selectedId === null ? null : findBeat(story, selectedId);
 
       if (current === null) {
@@ -369,7 +365,7 @@ export function Board({ story }: { story: Story }) {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [story, selectedId, dragging, edit, settingsOpen, finding, view]);
+  }, [story, selectedId, dragging, edit, settingsOpen, view]);
 
   useEffect(() => {
     if (selectedId === null) return;
@@ -447,15 +443,7 @@ export function Board({ story }: { story: Story }) {
             </button>
           </div>
           <div className="board__tools">
-            <button
-              type="button"
-              className="board__tool board__tool--find"
-              onClick={() => {
-                setFinding(true);
-              }}
-            >
-              Find <kbd className="kbd">Ctrl K</kbd>
-            </button>
+            <QuickFind story={story} onPick={pickResult} />
             {view === "board" && (
               <>
                 <div className="status-filter" role="group" aria-label="Show cards">
@@ -620,16 +608,6 @@ export function Board({ story }: { story: Story }) {
           edit={edit}
           onClose={() => {
             setSettingsOpen(false);
-          }}
-        />
-      )}
-
-      {finding && (
-        <QuickFind
-          story={story}
-          onPick={pickResult}
-          onClose={() => {
-            setFinding(false);
           }}
         />
       )}
