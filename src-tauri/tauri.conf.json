@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "SAMPO Studio",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "identifier": "fi.routa.sampo",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -28,10 +28,8 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "REPLACE_WITH_PUBLIC_KEY_FROM_SIGNER_GENERATE",
-      "endpoints": [
-        "https://github.com/OTSO7/sampo-studio/releases/latest/download/latest.json"
-      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENBMDM3MDU0MURFRkQ1NjgKUldSbzFlOGRWSEFEeW53dGpPSDdpRlpmOTVqUW9ZWjRXVk9UbEVENVhUQ2x5QW1tOW9CeldyTzMK",
+      "endpoints": ["https://github.com/OTSO7/SAMPO-studio/releases/latest/download/latest.json"],
       "windows": {
         "installMode": "passive"
       }
