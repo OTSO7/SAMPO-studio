@@ -23,6 +23,7 @@ const GROUPS: readonly { title: string; items: readonly [string, readonly string
       ["Select the next card", ["←", "↑", "↓", "→"]],
       ["Move the selected card", ["Alt", "Arrows"]],
       ["Write in the selected card", ["Enter"]],
+      ["Step status: draft, review, final", ["S"]],
       ["Delete the selected card", ["Delete"]],
       ["Zoom around the pointer", ["Ctrl", "Scroll"]],
       ["Zoom in / out / reset", ["Ctrl", "+ − 0"]],

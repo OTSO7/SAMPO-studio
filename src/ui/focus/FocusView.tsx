@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { editStory } from "@app/store";
 import { setFullscreen } from "@app/window";
 import { updatePhase, type Beat, type Story } from "@core/model";
-import { CardTypePicker, HeadingInput, TensionPicker } from "@ui/board/BeatFields";
+import { CardTypePicker, HeadingInput, StatusPicker, TensionPicker } from "@ui/board/BeatFields";
 import { insertCard, type InsertKind } from "@ui/board/insert-card";
 import { ScriptEditor } from "@ui/board/ScriptEditor";
 import { buildLookup } from "@ui/board/story-lookup";
@@ -252,6 +252,7 @@ function FocusCard({
       <ScriptEditor beat={beat} story={story} edit={edit} size="large" autoFocus={autoFocus} />
       <footer className="focus-card__foot">
         <CardTypePicker beat={beat} story={story} edit={edit} />
+        <StatusPicker beat={beat} edit={edit} />
         <TensionPicker beat={beat} edit={edit} />
       </footer>
     </article>

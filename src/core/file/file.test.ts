@@ -26,6 +26,7 @@ function baseSample(): Story {
           {
             ...beat,
             intensity: 3,
+            status: "review",
             blocks: [
               ...beat.blocks,
               { type: "note", id: ids.block(), kind: "question", text: "Sade?" },

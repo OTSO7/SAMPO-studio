@@ -68,6 +68,14 @@ describe("updateBeat", () => {
     expect(findBeat(cleared, b1.id)?.beat).not.toHaveProperty("intensity");
   });
 
+  it("sets the status and stores draft as no status at all", () => {
+    const final = updateBeat(story, b1.id, { status: "final" });
+    expect(findBeat(final, b1.id)?.beat.status).toBe("final");
+    expect(findBeat(updateBeat(final, b1.id, { status: "draft" }), b1.id)?.beat).not.toHaveProperty(
+      "status",
+    );
+  });
+
   it("does not touch the input story", () => {
     const before = b1.typeId;
     updateBeat(story, b1.id, { typeId: gameplay.id });

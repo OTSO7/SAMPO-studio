@@ -1,5 +1,6 @@
-import { updateBeat, type Beat, type Intensity, type Story } from "@core/model";
+import { BEAT_STATUSES, updateBeat, type Beat, type Intensity, type Story } from "@core/model";
 import { INTENSITY_NAMES } from "./intensity";
+import { STATUS_NAMES } from "./status";
 
 const INTENSITIES: readonly Intensity[] = [0, 1, 2, 3, 4, 5];
 
@@ -26,6 +27,30 @@ export function CardTypePicker({ beat, story, edit }: FieldProps) {
         >
           <span className="swatch-dot" />
           {type.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Draft → Review → Final. The S key on the board steps a card through the same states. */
+export function StatusPicker({ beat, edit }: Omit<FieldProps, "story">) {
+  const current = beat.status ?? "draft";
+  return (
+    <div className="status-picker" role="radiogroup" aria-label="Status">
+      {BEAT_STATUSES.map((status) => (
+        <button
+          key={status}
+          type="button"
+          role="radio"
+          aria-checked={current === status}
+          className="status-picker__item"
+          data-status={status}
+          onClick={() => {
+            edit((s) => updateBeat(s, beat.id, { status }));
+          }}
+        >
+          {STATUS_NAMES[status]}
         </button>
       ))}
     </div>

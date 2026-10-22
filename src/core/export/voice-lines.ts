@@ -13,7 +13,11 @@ export interface VoiceLine {
   readonly card: string;
   readonly heading: string;
   readonly seconds: number;
+  /** The card's status, so the studio records only lines from final cards. */
+  readonly status: string;
 }
+
+const STATUS_LABELS = { draft: "Draft", review: "Review", final: "Final" } as const;
 
 /** Every spoken line in story order, as a recording script needs it. */
 export function collectVoiceLines(story: Story): VoiceLine[] {
@@ -37,6 +41,7 @@ export function collectVoiceLines(story: Story): VoiceLine[] {
             card: `${phaseIndex + 1}.${beatIndex + 1}`,
             heading: beat.label ?? "",
             seconds: estimateSeconds(line.text),
+            status: STATUS_LABELS[beat.status ?? "draft"],
           };
         }),
     ),
@@ -70,6 +75,8 @@ const COLUMNS: readonly (readonly [string, keyof VoiceLine])[] = [
   ["Card", "card"],
   ["Card heading", "heading"],
   ["Phase", "phase"],
+  // Last, so sheets built on the earlier columns keep working.
+  ["Status", "status"],
 ];
 
 /**

@@ -1,6 +1,7 @@
 import { memo, type PointerEvent } from "react";
 
 import type { Beat } from "@core/model";
+import { STATUS_NAMES } from "./status";
 import type { StoryLookup } from "./story-lookup";
 
 interface BeatCardProps {
@@ -43,6 +44,7 @@ export const BeatCard = memo(function BeatCard({
       className={classes}
       data-beat-id={beat.id}
       data-swatch={type?.color ?? "bone"}
+      data-status={beat.status ?? "draft"}
       aria-pressed={selected}
       onClick={() => onSelect?.(beat)}
       onPointerDown={(event) => onPointerDown?.(event, beat)}
@@ -50,6 +52,11 @@ export const BeatCard = memo(function BeatCard({
       <span className="card__head">
         <span className="card__number">{number}</span>
         {typeName !== null && <span className="card__type">{typeName}</span>}
+        {beat.status !== undefined && (
+          <span className="card__status" data-status={beat.status}>
+            {STATUS_NAMES[beat.status]}
+          </span>
+        )}
         {beat.intensity !== undefined && (
           <span className="card__intensity" aria-label={`Tension ${beat.intensity} of 5`}>
             {[1, 2, 3, 4, 5].map((level) => (

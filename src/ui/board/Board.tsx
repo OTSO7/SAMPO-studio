@@ -13,6 +13,7 @@ import { flushSync } from "react-dom";
 import { ask, editStory } from "@app/store";
 import {
   addPhase,
+  BEAT_STATUSES,
   deleteBeat,
   deletePhase,
   findBeat,
@@ -20,9 +21,11 @@ import {
   moveBeat,
   setStoryTitle,
   splitPhaseAt,
+  updateBeat,
   updatePhase,
   type Beat,
   type BeatId,
+  type BeatStatus,
   type Phase,
   type Story,
 } from "@core/model";
@@ -38,6 +41,7 @@ import { insertCard, type InsertKind } from "./insert-card";
 import { PacingPanel } from "./PacingPanel";
 import { PhaseColumn } from "./PhaseColumn";
 import { QuickFind } from "./QuickFind";
+import { STATUS_NAMES } from "./status";
 import { StorySettings } from "./StorySettings";
 import { buildLookup } from "./story-lookup";
 import { useCardDrag, type DropTarget } from "./use-card-drag";
@@ -69,6 +73,8 @@ export function Board({ story }: { story: Story }) {
   const [zoom, setZoom] = useState(() => clampZoom(Number(readText("sampo.zoom") ?? "1")));
   const zoomRef = useRef(zoom);
   const [finding, setFinding] = useState(false);
+  /** Cards in other states fade back, so a review pass sees only what it needs. */
+  const [statusFilter, setStatusFilter] = useState<BeatStatus | null>(null);
 
   const changeView = useCallback((next: "board" | "lines") => {
     setView(next);
@@ -340,6 +346,13 @@ export function Board({ story }: { story: Story }) {
         return;
       }
 
+      if (event.key === "s" || event.key === "S") {
+        event.preventDefault();
+        const next = BEAT_STATUSES[(BEAT_STATUSES.indexOf(beat.status ?? "draft") + 1) % 3];
+        edit((s) => updateBeat(s, beat.id, { status: next ?? "draft" }));
+        return;
+      }
+
       if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
         const phase = story.phases[phaseIndex];
@@ -377,10 +390,15 @@ export function Board({ story }: { story: Story }) {
       ),
     0,
   );
+  const finals = story.phases.reduce(
+    (total, phase) => total + phase.beats.filter((beat) => beat.status === "final").length,
+    0,
+  );
 
   return (
     <div
       className={`board ${selected === null ? "" : "board--inspecting"}`}
+      data-status-filter={statusFilter ?? undefined}
       style={{ "--inspector-width": `${panel.width}px` } as CSSProperties}
     >
       <div className="board__main">
@@ -396,6 +414,14 @@ export function Board({ story }: { story: Story }) {
           <p className="board__meta">
             {story.phases.length} {story.phases.length === 1 ? "phase" : "phases"} · {cards}{" "}
             {cards === 1 ? "card" : "cards"} · {lines} {lines === 1 ? "line" : "lines"}
+            {cards > 0 && (
+              <>
+                {" · "}
+                <span className="board__progress">
+                  {finals}/{cards} final
+                </span>
+              </>
+            )}
           </p>
           <div className="view-switch" role="tablist" aria-label="View">
             <button
@@ -432,6 +458,20 @@ export function Board({ story }: { story: Story }) {
             </button>
             {view === "board" && (
               <>
+                <div className="status-filter" role="group" aria-label="Show cards">
+                  {[null, ...BEAT_STATUSES].map((status) => (
+                    <button
+                      key={status ?? "all"}
+                      type="button"
+                      aria-pressed={statusFilter === status}
+                      onClick={() => {
+                        setStatusFilter(status);
+                      }}
+                    >
+                      {status === null ? "All" : STATUS_NAMES[status]}
+                    </button>
+                  ))}
+                </div>
                 <div className="zoom" role="group" aria-label="Zoom">
                   <button
                     type="button"

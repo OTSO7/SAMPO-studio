@@ -59,6 +59,7 @@ function beatToJson(beat: Beat) {
     typeId: beat.typeId,
     ...optional("label", beat.label),
     ...optional("intensity", beat.intensity),
+    ...optional("status", beat.status),
     blocks: beat.blocks.map(blockToJson),
   };
 }

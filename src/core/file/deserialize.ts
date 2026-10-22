@@ -146,6 +146,10 @@ function readBeat(r: Reader, value: unknown, path: string): Beat | undefined {
     o["intensity"] === undefined
       ? undefined
       : (r.integer(o["intensity"], 0, 5, `${path}.intensity`) as Intensity | undefined);
+  const status =
+    o["status"] === undefined
+      ? undefined
+      : r.oneOf(o["status"], ["review", "final"] as const, `${path}.status`);
   const blocks = r.each(o["blocks"], `${path}.blocks`, (item, p) => readBlock(r, item, p));
 
   if (id === undefined || typeId === undefined) return undefined;
@@ -154,6 +158,7 @@ function readBeat(r: Reader, value: unknown, path: string): Beat | undefined {
     typeId,
     ...(label === undefined ? {} : { label }),
     ...(intensity === undefined ? {} : { intensity }),
+    ...(status === undefined ? {} : { status }),
     blocks,
   };
 }

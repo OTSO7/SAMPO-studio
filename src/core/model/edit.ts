@@ -11,7 +11,7 @@ import {
   type PhaseId,
 } from "./ids";
 import { nextSwatch, type Swatch } from "./palette";
-import type { Beat, CardType, Intensity, Phase, Story } from "./story";
+import type { Beat, BeatStatus, CardType, Intensity, Phase, Story } from "./story";
 
 /*
  * Story edits as pure functions: each returns a new story and leaves the input untouched,
@@ -59,20 +59,24 @@ export interface BeatPatch {
   readonly label?: string;
   /** `null` removes the intensity. */
   readonly intensity?: Intensity | null;
+  readonly status?: BeatStatus;
 }
 
 export function updateBeat(story: Story, beatId: BeatId, patch: BeatPatch): Story {
   return mapBeats(story, (beat) => {
     if (beat.id !== beatId) return beat;
-    const { label, intensity, ...rest } = beat;
+    const { label, intensity, status, ...rest } = beat;
     const nextLabel = patch.label === undefined ? label : patch.label.trim() || undefined;
     const nextIntensity =
       patch.intensity === undefined ? intensity : (patch.intensity ?? undefined);
+    const nextStatus =
+      patch.status === undefined ? status : patch.status === "draft" ? undefined : patch.status;
     return {
       ...rest,
       ...(patch.typeId === undefined ? {} : { typeId: patch.typeId }),
       ...(nextLabel === undefined ? {} : { label: nextLabel }),
       ...(nextIntensity === undefined ? {} : { intensity: nextIntensity }),
+      ...(nextStatus === undefined ? {} : { status: nextStatus }),
     };
   });
 }

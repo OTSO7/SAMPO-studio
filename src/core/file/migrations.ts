@@ -13,6 +13,8 @@ const MIGRATIONS: Readonly<Record<number, (story: unknown) => unknown>> = {
   // Version 3 adds image blocks. Older files need no change; the bump makes older apps refuse
   // files with pictures in them instead of failing on an unknown block type.
   2: (story) => story,
+  // Version 4 adds card status, so older apps refuse files instead of dropping it on save.
+  3: (story) => story,
 };
 
 export function migrate(story: unknown, fromVersion: number): unknown {

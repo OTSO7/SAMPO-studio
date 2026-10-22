@@ -16,6 +16,10 @@ export interface CardType {
 /** Perceived tension on a 0–5 scale. */
 export type Intensity = 0 | 1 | 2 | 3 | 4 | 5;
 
+/** How far a card is: being written, waiting for the team, or locked for recording. */
+export const BEAT_STATUSES = ["draft", "review", "final"] as const;
+export type BeatStatus = (typeof BEAT_STATUSES)[number];
+
 /** One card on the board: a moment, a scene, a conversation. */
 export interface Beat {
   readonly id: BeatId;
@@ -23,6 +27,8 @@ export interface Beat {
   /** The author's own heading for the card. */
   readonly label?: string;
   readonly intensity?: Intensity;
+  /** Left out while the card is a draft, the state every card starts in. */
+  readonly status?: Exclude<BeatStatus, "draft">;
   readonly blocks: readonly Block[];
 }
 

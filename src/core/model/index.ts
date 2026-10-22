@@ -64,4 +64,5 @@ export type {
 export { createIdFactory, newId, parseId } from "./ids";
 export type { Swatch } from "./palette";
 export { isSwatch, nextSwatch, SWATCHES } from "./palette";
-export type { Beat, CardType, Intensity, Phase, Story } from "./story";
+export type { Beat, BeatStatus, CardType, Intensity, Phase, Story } from "./story";
+export { BEAT_STATUSES } from "./story";
