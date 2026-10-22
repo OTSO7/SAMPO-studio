@@ -25,6 +25,17 @@ jobs:
           node-version: lts/*
           cache: pnpm
 
+      # package.json is the only place the version lives; a tag that disagrees would ship a
+      # build that reports the wrong version and confuses the updater.
+      - name: Check tag matches package.json
+        shell: bash
+        run: |
+          version="v$(node -p "require('./package.json').version")"
+          if [ "$version" != "${{ github.ref_name }}" ]; then
+            echo "::error::Tag ${{ github.ref_name }} does not match package.json ($version)"
+            exit 1
+          fi
+
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2

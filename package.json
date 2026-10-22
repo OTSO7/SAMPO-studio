@@ -1,7 +1,7 @@
 {
   "name": "sampo-studio",
   "private": true,
-  "version": "0.4.1",
+  "version": "0.4.3",
   "type": "module",
   "packageManager": "pnpm@12.14.0",
   "scripts": {
@@ -15,7 +15,9 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test"
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
+    "preversion": "pnpm check",
+    "release": "npm version -m \"chore(release): bump version to %s\""
   },
   "dependencies": {
     "@fontsource-variable/source-serif-4": "^5.3.1",
