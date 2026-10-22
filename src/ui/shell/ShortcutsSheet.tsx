@@ -14,6 +14,7 @@ const GROUPS: readonly { title: string; items: readonly [string, readonly string
       ["Undo / redo", ["Ctrl", "Z"]],
       ["Find anything", ["Ctrl", "K"]],
       ["Present (Focus)", ["F5"]],
+      ["Full screen", ["F11"]],
     ],
   },
   {

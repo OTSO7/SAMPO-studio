@@ -6,6 +6,16 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_process::init())
+        .setup(|app| {
+            // The updater is desktop-only. The frontend checks for releases after startup.
+            #[cfg(desktop)]
+            {
+                app.handle()
+                    .plugin(tauri_plugin_updater::Builder::new().build())?;
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::read_story_file,
             commands::write_story_file,

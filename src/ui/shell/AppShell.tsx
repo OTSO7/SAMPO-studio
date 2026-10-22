@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { confirmWindowClose, openLaunchFile } from "@app/commands";
-import { guardWindowClose } from "@app/window";
+import { guardWindowClose, toggleFullscreen } from "@app/window";
 
 import { Board } from "@ui/board/Board";
 import { FocusView } from "@ui/focus/FocusView";
@@ -14,15 +14,31 @@ import { StartScreen } from "./StartScreen";
 import { Statusbar } from "./Statusbar";
 import { Titlebar } from "./Titlebar";
 import { useShortcuts } from "./use-shortcuts";
+import { useUpdateCheck } from "./use-update-check";
 
 import "./app-shell.css";
 
 export function AppShell() {
-  const { deps } = useServices();
+  const { deps, prompts } = useServices();
   const story = useStore(deps.document, (state) => state.story);
   const [focusing, setFocusing] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   useShortcuts(deps);
+  useUpdateCheck(prompts, deps.notices);
+
+  // F11 toggles full screen, like a browser or a media player.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "F11") {
+        event.preventDefault();
+        void toggleFullscreen();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
 
   // Double-clicking a .sampo file starts the app with that file.
   useEffect(() => {

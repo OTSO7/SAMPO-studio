@@ -9,6 +9,16 @@ export async function setFullscreen(on: boolean): Promise<void> {
   }
 }
 
+/** Full screen hides the taskbar, as in a presentation or a focused editing session. */
+export async function toggleFullscreen(): Promise<void> {
+  try {
+    const window = getCurrentWindow();
+    await window.setFullscreen(!(await window.isFullscreen()));
+  } catch (error) {
+    console.warn("Could not toggle fullscreen", error);
+  }
+}
+
 /**
  * Asks `shouldClose` before the window closes; resolving `false` keeps it open.
  * Returns a function that removes the guard.
