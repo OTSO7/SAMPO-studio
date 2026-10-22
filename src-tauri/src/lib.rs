@@ -20,6 +20,8 @@ pub fn run() {
             commands::read_story_file,
             commands::write_story_file,
             commands::story_file_modified,
+            commands::put_media,
+            commands::media_folder,
             commands::write_export_file,
             commands::launch_file
         ])

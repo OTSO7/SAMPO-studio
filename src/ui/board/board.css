@@ -2174,3 +2174,142 @@ body.is-resizing-rows * {
     transform: translateY(-4px) scale(0.97);
   }
 }
+
+/* ---------- sound ---------- */
+
+.player {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--ink-raised);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.player.is-playing {
+  border-color: var(--ochre);
+}
+
+.player--compact {
+  display: inline-flex;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.player__toggle {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--ochre);
+  border-radius: 50%;
+  background: var(--ochre-wash);
+  color: var(--ochre-text);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.player--compact .player__toggle {
+  width: 22px;
+  height: 22px;
+}
+
+.player__toggle svg {
+  width: 10px;
+  height: 10px;
+  fill: currentcolor;
+}
+
+.player__toggle:hover {
+  background: rgb(169 102 9 / 30%);
+}
+
+.player__toggle:active {
+  transform: scale(0.92);
+}
+
+/* While it plays, the button breathes so you can find the sound that is on. */
+.player.is-playing .player__toggle {
+  animation: player-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes player-pulse {
+  50% {
+    box-shadow: 0 0 0 4px rgb(240 167 66 / 18%);
+  }
+}
+
+.player__track {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  min-width: 40px;
+  border-radius: 2px;
+  background: var(--hairline-strong);
+  cursor: pointer;
+}
+
+/* A taller invisible hit area, so the thin bar is easy to grab. */
+.player__track::before {
+  content: "";
+  position: absolute;
+  inset: -8px 0;
+}
+
+.player__track:focus-visible {
+  outline: 1px solid var(--ochre-text);
+  outline-offset: 4px;
+}
+
+.player__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 2px;
+  background: var(--ochre-text);
+}
+
+.player__time {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--bone-muted);
+}
+
+.script__block--audio {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.script__take {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.script__take-add {
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--radius-sm);
+}
+
+.card__sound {
+  max-width: 160px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ochre-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player.is-playing .player__toggle {
+    animation: none;
+  }
+}

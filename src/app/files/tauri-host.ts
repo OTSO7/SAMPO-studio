@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke, isTauri } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 
 import { FILE_EXTENSION } from "@core/file";
@@ -15,6 +15,8 @@ const KNOWN_CODES: readonly FileErrorCode[] = [
   "not_a_story_file",
   "unsupported_export",
   "too_large",
+  "bad_media",
+  "missing_media",
   "io",
 ];
 
@@ -41,6 +43,15 @@ function toFileError(error: unknown): FileError {
   return new FileError("unknown", String(error));
 }
 
+/** The desktop folder packed files are served from; known after the first file call. */
+let mediaFolder: string | null = null;
+/** Outside the desktop app (the dev server in a browser) media lives in memory instead. */
+const browserMedia = new Map<string, string>();
+
+async function ensureMediaFolder(): Promise<void> {
+  mediaFolder ??= await invoke<string>("media_folder");
+}
+
 export const tauriFileHost: FileHost = {
   async pickOpenPath() {
     const path = await open({ multiple: false, directory: false, filters: FILTERS });
@@ -53,18 +64,42 @@ export const tauriFileHost: FileHost = {
 
   async readText(path) {
     try {
+      await ensureMediaFolder();
       return await invoke<string>("read_story_file", { path });
     } catch (error) {
       throw toFileError(error);
     }
   },
 
-  async writeText(path, contents) {
+  async writeText(path, contents, media) {
     try {
-      await invoke("write_story_file", { path, contents });
+      await invoke("write_story_file", { path, contents, media });
     } catch (error) {
       throw toFileError(error);
     }
+  },
+
+  async putMedia(file, extension) {
+    if (!isTauri()) {
+      const id = `${crypto.randomUUID().replaceAll("-", "").padEnd(64, "0")}.${extension}`;
+      browserMedia.set(id, URL.createObjectURL(file));
+      return id;
+    }
+    try {
+      await ensureMediaFolder();
+      // Raw bytes, not JSON: a music track would otherwise travel as megabytes of numbers.
+      return await invoke<string>("put_media", new Uint8Array(await file.arrayBuffer()), {
+        headers: { "x-extension": extension },
+      });
+    } catch (error) {
+      throw toFileError(error);
+    }
+  },
+
+  mediaUrl(id) {
+    const local = browserMedia.get(id);
+    if (local !== undefined) return local;
+    return mediaFolder === null ? "" : convertFileSrc(`${mediaFolder}/${id}`);
   },
 
   async modifiedAt(path) {

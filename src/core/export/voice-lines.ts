@@ -17,6 +17,8 @@ export interface VoiceLine {
   readonly status: BeatStatus;
   /** The character's voice actor, empty until cast. */
   readonly actor: string;
+  /** The recording attached to the line, as a `media:` reference, if any. */
+  readonly take?: string;
 }
 
 const STATUS_LABELS = { draft: "Draft", review: "Review", final: "Final" } as const;
@@ -46,6 +48,7 @@ export function collectVoiceLines(story: Story): VoiceLine[] {
             seconds: estimateSeconds(line.text),
             status: beat.status ?? "draft",
             actor: speaker?.actor ?? "",
+            ...(line.take === undefined ? {} : { take: line.take }),
           };
         }),
     ),
@@ -82,6 +85,7 @@ const COLUMNS: readonly (readonly [string, keyof VoiceLine])[] = [
   // Last, so sheets built on the earlier columns keep working.
   ["Status", "status"],
   ["Actor", "actor"],
+  ["Take", "take"],
 ];
 
 /**
@@ -92,7 +96,12 @@ export function voiceLinesToCsv(lines: readonly VoiceLine[]): string {
   const rows = [
     COLUMNS.map(([header]) => header),
     ...lines.map((line) =>
-      COLUMNS.map(([, key]) => (key === "status" ? STATUS_LABELS[line.status] : String(line[key]))),
+      COLUMNS.map(([, key]) => {
+        if (key === "status") return STATUS_LABELS[line.status];
+        // The studio needs to know a scratch exists, not the internal file name.
+        if (key === "take") return line.take === undefined ? "" : "yes";
+        return String(line[key]);
+      }),
     ),
   ];
   return `\uFEFF${rows.map((row) => row.map(csvCell).join(",")).join("\r\n")}\r\n`;

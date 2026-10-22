@@ -1,14 +1,16 @@
 export type {
   ActionBlock,
+  AudioBlock,
   Block,
   BlockType,
   ImageBlock,
   LineBlock,
+  MediaBlock,
   NoteBlock,
   NoteKind,
   TextBlockType,
 } from "./block";
-export { NOTE_KINDS } from "./block";
+export { mediaIdOf, mediaRef, NOTE_KINDS, storyMediaIds } from "./block";
 export type { BeatLocation, BeatPatch, NewBeat, NewBlock } from "./edit";
 export {
   addBlock,
@@ -30,6 +32,8 @@ export {
   setBlockType,
   setLineDirection,
   setLineSpeaker,
+  setLineTake,
+  setMediaSource,
   setStoryTitle,
   splitPhaseAt,
   updateBeat,

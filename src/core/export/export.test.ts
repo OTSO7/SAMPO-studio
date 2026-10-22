@@ -88,15 +88,16 @@ describe("voiceLinesToCsv", () => {
         seconds: 2,
         status: "final",
         actor: "Anna Ääni",
+        take: `media:${"a".repeat(64)}.opus`,
       },
     ]);
     expect(
       csv.startsWith(
-        "\uFEFFID,Character,Line,Direction,Seconds,Card,Card heading,Phase,Status,Actor\r\n",
+        "\uFEFFID,Character,Line,Direction,Seconds,Card,Card heading,Phase,Status,Actor,Take\r\n",
       ),
     ).toBe(true);
     expect(csv).toContain(
-      'VO_A_0001,A,"Hän sanoi ""ei"", ja lähti.\nHiljaisuus.",,2,1.1,,1. Alku,Final,Anna Ääni\r\n',
+      'VO_A_0001,A,"Hän sanoi ""ei"", ja lähti.\nHiljaisuus.",,2,1.1,,1. Alku,Final,Anna Ääni,yes\r\n',
     );
   });
 });

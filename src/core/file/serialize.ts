@@ -76,10 +76,12 @@ function blockToJson(block: Block) {
         speaker: block.speaker,
         ...optional("direction", block.direction),
         text: block.text,
+        ...optional("take", block.take),
       };
     case "note":
       return { type: block.type, id: block.id, kind: block.kind, text: block.text };
     case "image":
+    case "audio":
       return { type: block.type, id: block.id, text: block.text, src: block.src };
   }
 }

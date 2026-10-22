@@ -263,6 +263,8 @@ function describeFileError(error: unknown): string {
       return "File is too large to open";
     case "changed_on_disk":
       return "File was changed by another program";
+    case "bad_media":
+    case "missing_media":
     case "io":
     case "unknown":
       return error.message;

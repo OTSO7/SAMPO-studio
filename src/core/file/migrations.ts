@@ -17,6 +17,8 @@ const MIGRATIONS: Readonly<Record<number, (story: unknown) => unknown>> = {
   3: (story) => story,
   // Version 5 adds voice actors to characters, for the same reason.
   4: (story) => story,
+  // Version 6 packs pictures and sounds into the file next to the story; blocks point at them.
+  5: (story) => story,
 };
 
 export function migrate(story: unknown, fromVersion: number): unknown {

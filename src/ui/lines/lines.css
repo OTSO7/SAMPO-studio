@@ -152,6 +152,10 @@
   width: 96px;
 }
 
+.lines__col-take {
+  width: 80px;
+}
+
 /* Same framed badge as on the board's cards; draft stays quiet. */
 .lines__status {
   padding: 1px var(--space-1);

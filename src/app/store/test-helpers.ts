@@ -38,6 +38,14 @@ export class ControlledHost implements FileHost {
     return new Promise<void>((resolve) => this.held.push(resolve));
   }
 
+  putMedia(_file: Blob, extension: string) {
+    return Promise.resolve(`${"0".repeat(64)}.${extension}`);
+  }
+
+  mediaUrl(id: string) {
+    return `media://${id}`;
+  }
+
   private clock = 0;
   private readonly modified = new Map<string, number>();
 

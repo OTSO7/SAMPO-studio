@@ -11,7 +11,9 @@ import {
   type EntityId,
   type Story,
 } from "@core/model";
+import { AudioPlayer } from "@ui/board/AudioPlayer";
 import { STATUS_NAMES } from "@ui/board/status";
+import { useServices } from "@ui/services/use-services";
 
 import "./lines.css";
 
@@ -37,6 +39,7 @@ function formatDuration(seconds: number): string {
 export function LinesView({ story, edit, onOpenCard }: LinesViewProps) {
   const [speaker, setSpeaker] = useState<SpeakerFilter>("all");
   const [status, setStatus] = useState<BeatStatus | "all">("all");
+  const { files } = useServices().deps;
   const lines = useMemo(() => collectVoiceLines(story), [story]);
   const colors = useMemo(
     () => new Map(story.entities.map((entity) => [entity.id, entity.color ?? "slate"])),
@@ -148,6 +151,7 @@ export function LinesView({ story, edit, onOpenCard }: LinesViewProps) {
               <th>Line</th>
               <th className="lines__col-direction">Direction</th>
               <th className="lines__col-time">Time</th>
+              <th className="lines__col-take">Take</th>
               <th className="lines__col-id">ID</th>
             </tr>
           </thead>
@@ -216,6 +220,15 @@ export function LinesView({ story, edit, onOpenCard }: LinesViewProps) {
                   />
                 </td>
                 <td className="lines__time">{line.seconds > 0 ? `${line.seconds} s` : ""}</td>
+                <td>
+                  {line.take !== undefined && (
+                    <AudioPlayer
+                      compact
+                      url={files.mediaUrl(line.take)}
+                      label={`Take of ${line.id}`}
+                    />
+                  )}
+                </td>
                 <td className="lines__id">{line.id}</td>
               </tr>
             ))}

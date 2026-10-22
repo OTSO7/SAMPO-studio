@@ -9,8 +9,14 @@ export interface FileHost {
   pickOpenPath(): Promise<string | null>;
   /** Resolves to `null` when the user cancels. */
   pickSavePath(suggestedName: string): Promise<string | null>;
+  /** Reads the story text; the package's pictures and sounds become available to `mediaUrl`. */
   readText(path: string): Promise<string>;
-  writeText(path: string, contents: string): Promise<void>;
+  /** Writes the story as one package together with the packed files named in `media`. */
+  writeText(path: string, contents: string, media: readonly string[]): Promise<void>;
+  /** Keeps a picture or sound for the story and resolves to its packed name. */
+  putMedia(file: Blob, extension: string): Promise<string>;
+  /** Where the window can load a packed file from. */
+  mediaUrl(id: string): string;
   /** When the story file was last written, in ms; `null` when it does not exist. */
   modifiedAt(path: string): Promise<number | null>;
   /** Resolves to `null` when the user cancels. */
@@ -29,6 +35,8 @@ export type FileErrorCode =
   | "too_large"
   | "io"
   | "changed_on_disk"
+  | "bad_media"
+  | "missing_media"
   | "unknown";
 
 /** A platform failure with a stable code the UI can turn into a friendly message. */

@@ -1,47 +1,55 @@
 import { useCallback, useEffect } from "react";
 
 import { showNotice } from "@app/store";
-import { addBlock, type BeatId, type Story } from "@core/model";
+import { addBlock, type BeatId, type NewBlock, type Story } from "@core/model";
 import { useServices } from "@ui/services/use-services";
-import { imageFiles, readImage } from "./images";
+import { isImage, mediaFiles, readImage, soundExtension } from "./images";
 
 type Edit = (recipe: (story: Story) => Story, group?: string) => void;
 export type AddImages = (beatId: BeatId, files: readonly File[], index?: number) => void;
 
-/** Adds pictures to a card as one undo step, from `index` on (default: the end). */
+/**
+ * Adds pictures and sounds to a card as one undo step, from `index` on (default: the end).
+ * Each file is packed into the story, so it travels with the `.sampo` file.
+ */
 export function useAddImages(edit: Edit): AddImages {
-  const { notices } = useServices().deps;
+  const { notices, files: story } = useServices().deps;
 
   return useCallback(
     (beatId, files, index) => {
-      void Promise.allSettled(files.map(readImage)).then((results) => {
-        const sources = results.flatMap((result) =>
+      const pack = async (file: File): Promise<NewBlock> => {
+        if (isImage(file)) {
+          return { type: "image", src: await story.putMedia(await readImage(file), "webp") };
+        }
+        const extension = soundExtension(file);
+        if (extension === null) throw new Error(`${file.name} is not a picture or a sound`);
+        const name = file.name.replace(/\.[^.]+$/u, "");
+        return { type: "audio", src: await story.putMedia(file, extension), text: name };
+      };
+
+      void Promise.allSettled(files.map(pack)).then((results) => {
+        const blocks = results.flatMap((result) =>
           result.status === "fulfilled" ? [result.value] : [],
         );
-        if (sources.length > 0) {
-          edit((story) =>
-            sources.reduce(
-              (current, src, i) =>
-                addBlock(
-                  current,
-                  beatId,
-                  { type: "image", src },
-                  index === undefined ? undefined : index + i,
-                ).story,
-              story,
+        if (blocks.length > 0) {
+          edit((current) =>
+            blocks.reduce(
+              (next, block, i) =>
+                addBlock(next, beatId, block, index === undefined ? undefined : index + i).story,
+              current,
             ),
           );
         }
-        const failed = results.length - sources.length;
+        const failed = results.length - blocks.length;
         if (failed > 0) {
           showNotice(notices, {
             tone: "error",
-            title: failed === 1 ? "Could not read the image" : `Could not read ${failed} images`,
+            title: failed === 1 ? "Could not add the file" : `Could not add ${failed} files`,
           });
         }
       });
     },
-    [edit, notices],
+    [edit, notices, story],
   );
 }
 
@@ -81,13 +89,13 @@ export function useImageInput(add: AddImages, openBeatId: BeatId | null): void {
       const beatId = beatOf(target);
       mark(null);
       if (!hasFiles(event) || beatId === null) return;
-      const files = imageFiles(event.dataTransfer?.files);
+      const files = mediaFiles(event.dataTransfer?.files);
       if (files.length > 0) add(beatId, files);
     };
     const onPaste = (event: ClipboardEvent) => {
       // The script editor handles pastes inside it, at the cursor.
       if (event.defaultPrevented || openBeatId === null) return;
-      const files = imageFiles(event.clipboardData?.files);
+      const files = mediaFiles(event.clipboardData?.files);
       if (files.length === 0) return;
       event.preventDefault();
       add(openBeatId, files);

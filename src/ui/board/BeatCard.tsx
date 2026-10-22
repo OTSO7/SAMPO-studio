@@ -1,6 +1,7 @@
 import { memo, type PointerEvent } from "react";
 
 import type { Beat } from "@core/model";
+import { useServices } from "@ui/services/use-services";
 import { STATUS_NAMES } from "./status";
 import type { StoryLookup } from "./story-lookup";
 
@@ -31,6 +32,9 @@ export const BeatCard = memo(function BeatCard({
   const lines = beat.blocks.filter((block) => block.type === "line");
   const notes = beat.blocks.filter((block) => block.type === "note").length;
   const cover = beat.blocks.find((block) => block.type === "image");
+  const sounds = beat.blocks.filter((block) => block.type === "audio");
+  const takes = lines.filter((line) => line.take !== undefined).length;
+  const { files } = useServices().deps;
   // The default type is the quiet one; only other types announce themselves.
   const typeName = type !== undefined && type.id !== lookup.defaultTypeId ? type.name : null;
 
@@ -68,7 +72,12 @@ export const BeatCard = memo(function BeatCard({
       </span>
 
       {cover !== undefined && (
-        <img className="card__cover" src={cover.src} alt={cover.text} draggable={false} />
+        <img
+          className="card__cover"
+          src={files.mediaUrl(cover.src)}
+          alt={cover.text}
+          draggable={false}
+        />
       )}
       {beat.label !== undefined && <span className="card__label">{beat.label}</span>}
       {lead !== "" && <span className="card__text">{lead}</span>}
@@ -90,11 +99,23 @@ export const BeatCard = memo(function BeatCard({
         </span>
       )}
 
-      {lead === "" && lines.length === 0 && beat.label === undefined && cover === undefined && (
-        <span className="card__empty">Empty card</span>
-      )}
+      {lead === "" &&
+        lines.length === 0 &&
+        beat.label === undefined &&
+        cover === undefined &&
+        sounds.length === 0 && <span className="card__empty">Empty card</span>}
 
-      {notes > 0 && <span className="card__foot">{notes === 1 ? "1 note" : `${notes} notes`}</span>}
+      {(notes > 0 || sounds.length > 0 || takes > 0) && (
+        <span className="card__foot">
+          {sounds.length > 0 && (
+            <span className="card__sound" title={sounds.map((sound) => sound.text).join(", ")}>
+              ♪ {sounds.length === 1 ? sounds[0]?.text || "Sound" : `${sounds.length} sounds`}
+            </span>
+          )}
+          {takes > 0 && <span>{takes === 1 ? "1 take" : `${takes} takes`}</span>}
+          {notes > 0 && <span>{notes === 1 ? "1 note" : `${notes} notes`}</span>}
+        </span>
+      )}
     </button>
   );
 });

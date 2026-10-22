@@ -244,7 +244,7 @@ export type NewBlock =
   | { readonly type: "action"; readonly text?: string }
   | { readonly type: "line"; readonly speaker: EntityId | null; readonly text?: string }
   | { readonly type: "note"; readonly text?: string }
-  | { readonly type: "image"; readonly src: string; readonly text?: string };
+  | { readonly type: "image" | "audio"; readonly src: string; readonly text?: string };
 
 /** Inserts a block into a beat at `index` (default: the end) and returns its id. */
 export function addBlock(
@@ -280,7 +280,7 @@ export function removeBlock(story: Story, blockId: BlockId): Story {
 /** Turns a block into prose, a spoken line or a note, keeping its text and id. */
 export function setBlockType(story: Story, blockId: BlockId, type: TextBlockType): Story {
   return mapBlocks(story, blockId, (block): Block => {
-    if (block.type === type || block.type === "image") return block;
+    if (block.type === type || block.type === "image" || block.type === "audio") return block;
     const { id, text } = block;
     if (type === "line") return { type, id, text, speaker: null };
     if (type === "note") return { type, id, text, kind: "idea" };
@@ -301,6 +301,22 @@ export function setLineDirection(story: Story, blockId: BlockId, direction: stri
     const { direction: _old, ...rest } = block;
     return direction.trim() === "" ? rest : { ...rest, direction };
   });
+}
+
+/** Attaches a recording to a line; `null` removes it. */
+export function setLineTake(story: Story, blockId: BlockId, take: string | null): Story {
+  return mapBlocks(story, blockId, (block) => {
+    if (block.type !== "line") return block;
+    const { take: _old, ...rest } = block;
+    return take === null ? rest : { ...rest, take };
+  });
+}
+
+/** Points a picture or sound at another copy of the same file, e.g. once it is packed. */
+export function setMediaSource(story: Story, blockId: BlockId, src: string): Story {
+  return mapBlocks(story, blockId, (block) =>
+    block.type === "image" || block.type === "audio" ? { ...block, src } : block,
+  );
 }
 
 /** Finds a character by name (case-insensitive) or adds one. */
@@ -430,6 +446,8 @@ function toBlock(block: NewBlock, ids: IdFactory): Block {
   const text = block.text ?? "";
   if (block.type === "line") return { type: "line", id, speaker: block.speaker, text };
   if (block.type === "note") return { type: "note", id, kind: "idea", text };
-  if (block.type === "image") return { type: "image", id, src: block.src, text };
+  if (block.type === "image" || block.type === "audio") {
+    return { type: block.type, id, src: block.src, text };
+  }
   return { type: "action", id, text };
 }

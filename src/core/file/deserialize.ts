@@ -1,5 +1,6 @@
 import {
   ENTITY_KINDS,
+  mediaIdOf,
   NOTE_KINDS,
   SWATCHES,
   type Beat,
@@ -171,7 +172,11 @@ function readBlock(r: Reader, value: unknown, path: string): Block | undefined {
 
   const id = r.id("block", o["id"], `${path}.id`);
   const text = r.string(o["text"], `${path}.text`);
-  const type = r.oneOf(o["type"], ["action", "line", "note", "image"] as const, `${path}.type`);
+  const type = r.oneOf(
+    o["type"],
+    ["action", "line", "note", "image", "audio"] as const,
+    `${path}.type`,
+  );
   if (id === undefined || text === undefined || type === undefined) return undefined;
 
   switch (type) {
@@ -182,8 +187,16 @@ function readBlock(r: Reader, value: unknown, path: string): Block | undefined {
       const speaker =
         o["speaker"] === null ? null : r.id("entity", o["speaker"], `${path}.speaker`);
       const direction = r.optionalString(o["direction"], `${path}.direction`);
+      const take = o["take"] === undefined ? undefined : readMedia(r, o["take"], `${path}.take`);
       if (speaker === undefined) return undefined;
-      return { type, id, speaker, text, ...(direction === undefined ? {} : { direction }) };
+      return {
+        type,
+        id,
+        speaker,
+        text,
+        ...(direction === undefined ? {} : { direction }),
+        ...(take === undefined ? {} : { take }),
+      };
     }
 
     case "note": {
@@ -191,15 +204,24 @@ function readBlock(r: Reader, value: unknown, path: string): Block | undefined {
       return kind === undefined ? undefined : { type, id, kind, text };
     }
 
-    case "image": {
-      const src = r.string(o["src"], `${path}.src`);
-      if (src === undefined) return undefined;
-      // Only embedded pictures: a file path or web address would break when the story moves.
-      if (!src.startsWith("data:image/"))
-        return r.fail(`${path}.src`, "expected an embedded image");
-      return { type, id, src, text };
+    case "image":
+    case "audio": {
+      // Older stories hold pictures inline; they are packed on the next save.
+      const inline = type === "image" && String(o["src"]).startsWith("data:image/");
+      const src = inline ? (o["src"] as string) : readMedia(r, o["src"], `${path}.src`);
+      return src === undefined ? undefined : { type, id, src, text };
     }
   }
+}
+
+/**
+ * Only files packed into the story: a path or web address would break as soon as the story
+ * moves to another computer.
+ */
+function readMedia(r: Reader, value: unknown, path: string): string | undefined {
+  const src = r.string(value, path);
+  if (src === undefined) return undefined;
+  return mediaIdOf(src) === null ? r.fail(path, "expected a file packed in the story") : src;
 }
 
 /** Cross-references the schema reader cannot see on its own. */

@@ -1,10 +1,21 @@
 import { describe, expect, it } from "vitest";
 
-import { addCardType, setLineDirection, updateBeat, type LineBlock, type Story } from "../model";
+import {
+  addCardType,
+  setLineDirection,
+  setLineTake,
+  storyMediaIds,
+  updateBeat,
+  type LineBlock,
+  type Story,
+} from "../model";
 import { deterministicIds, sampleStory as baseStory } from "../testing/sample-story";
 import { deserializeStory } from "./deserialize";
 import { CURRENT_VERSION, FORMAT_ID } from "./format";
 import { serializeStory } from "./serialize";
+
+const PICTURE = `media:${"a".repeat(64)}.webp`;
+const SOUND = `media:${"b".repeat(64)}.mp3`;
 
 function baseSample(): Story {
   const story = baseStory();
@@ -30,12 +41,8 @@ function baseSample(): Story {
             blocks: [
               ...beat.blocks,
               { type: "note", id: ids.block(), kind: "question", text: "Sade?" },
-              {
-                type: "image",
-                id: ids.block(),
-                src: "data:image/webp;base64,UklGRg==",
-                text: "Yö",
-              },
+              { type: "image", id: ids.block(), src: PICTURE, text: "Yö" },
+              { type: "audio", id: ids.block(), src: SOUND, text: "Tuuli" },
             ],
           },
           ...phase.beats.slice(1),
@@ -54,7 +61,12 @@ function sampleStory(): Story {
   if (beat === undefined || line === undefined) throw new Error("fixture changed");
 
   const { story: withType, typeId } = addCardType(base, "Boss fight", deterministicIds());
-  return setLineDirection(updateBeat(withType, beat.id, { typeId }), line.id, "kuiskaten");
+  const directed = setLineDirection(
+    updateBeat(withType, beat.id, { typeId }),
+    line.id,
+    "kuiskaten",
+  );
+  return setLineTake(directed, line.id, `media:${"c".repeat(64)}.opus`);
 }
 
 /** Round-trips the story through the file format and parses the raw JSON for tampering. */
@@ -134,16 +146,42 @@ describe("deserializeStory", () => {
     expect(!result.ok && result.errors[0]).toMatch(/newer version of SAMPO/u);
   });
 
-  it("only accepts pictures embedded in the file", () => {
+  it("only accepts pictures and sounds packed in the file", () => {
     const file = rawFile();
-    const image = file.story.phases[0]?.beats[0]?.blocks.find((block) => block["type"] === "image");
-    if (image === undefined) throw new Error("fixture changed");
+    const blocks = file.story.phases[0]?.beats[0]?.blocks ?? [];
+    const image = blocks.find((block) => block["type"] === "image");
+    const audio = blocks.find((block) => block["type"] === "audio");
+    if (image === undefined || audio === undefined) throw new Error("fixture changed");
     image["src"] = "C:/Users/me/kuva.png";
+    audio["src"] = "https://example.com/tuuli.mp3";
 
     const result = load(file);
 
     expect(!result.ok && result.errors).toEqual([
-      "story.phases[0].beats[0].blocks[3].src: expected an embedded image",
+      "story.phases[0].beats[0].blocks[3].src: expected a file packed in the story",
+      "story.phases[0].beats[0].blocks[4].src: expected a file packed in the story",
+    ]);
+  });
+
+  it("still opens pictures stored inline by older versions", () => {
+    const file = rawFile();
+    const image = file.story.phases[0]?.beats[0]?.blocks.find((block) => block["type"] === "image");
+    if (image === undefined) throw new Error("fixture changed");
+    image["src"] = "data:image/webp;base64,UklGRg==";
+
+    const result = load(file);
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("lists every packed file a save must include, once each", () => {
+    const story = sampleStory();
+    const line = story.phases[0]?.beats[1]?.blocks.find((block) => block.type === "line");
+    if (line === undefined) throw new Error("fixture changed");
+
+    expect(storyMediaIds(setLineTake(story, line.id, PICTURE))).toEqual([
+      "a".repeat(64) + ".webp",
+      "b".repeat(64) + ".mp3",
     ]);
   });
 

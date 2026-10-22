@@ -1,5 +1,5 @@
 import { deserializeStory, FILE_EXTENSION, serializeStory } from "@core/file";
-import type { Story } from "@core/model";
+import { mediaIdOf, mediaRef, setMediaSource, storyMediaIds, type Story } from "@core/model";
 import { FileError, type ExportFormat, type FileHost } from "./file-host";
 
 export type OpenResult =
@@ -39,8 +39,38 @@ export class StoryFiles {
     const loaded = deserializeStory(await this.host.readText(path));
     this.known.set(path, await this.host.modifiedAt(path));
     return loaded.ok
-      ? { status: "opened", path, story: loaded.story }
+      ? { status: "opened", path, story: await this.packInlinePictures(loaded.story) }
       : { status: "invalid", path, errors: loaded.errors };
+  }
+
+  /** Keeps a picture or sound for the story and resolves to the reference blocks store. */
+  async putMedia(file: Blob, extension: string): Promise<string> {
+    return mediaRef(await this.host.putMedia(file, extension));
+  }
+
+  /** Where the window loads a block's picture or sound from. */
+  mediaUrl(src: string): string {
+    const id = mediaIdOf(src);
+    return id === null ? src : this.host.mediaUrl(id);
+  }
+
+  /**
+   * Stories from before packages hold pictures inline. They move into the package as the
+   * story opens, so the next save is small and fast, with nothing for the author to do.
+   */
+  private async packInlinePictures(story: Story): Promise<Story> {
+    let packed = story;
+    for (const phase of story.phases) {
+      for (const beat of phase.beats) {
+        for (const block of beat.blocks) {
+          if (block.type !== "image" || !block.src.startsWith("data:")) continue;
+          const picture = await (await fetch(block.src)).blob();
+          const extension = picture.type.split("/")[1] ?? "webp";
+          packed = setMediaSource(packed, block.id, await this.putMedia(picture, extension));
+        }
+      }
+    }
+    return packed;
   }
 
   /**
@@ -83,7 +113,7 @@ export class StoryFiles {
 
   private async writeTo(path: string, story: Story): Promise<SaveResult> {
     const contents = serializeStory(story, { savedAt: this.clock().toISOString() });
-    await this.host.writeText(path, contents);
+    await this.host.writeText(path, contents, storyMediaIds(story));
     this.known.set(path, await this.host.modifiedAt(path));
     return { status: "saved", path };
   }

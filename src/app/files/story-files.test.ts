@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { serializeStory } from "@core/file";
 import { assembleStory } from "@core/import";
+import { addBlock } from "@core/model";
 import { FileError, type FileHost } from "./file-host";
 import { StoryFiles, suggestedFileName } from "./story-files";
 
@@ -35,10 +36,25 @@ class FakeHost implements FileHost {
       : Promise.resolve(contents);
   }
 
-  writeText(path: string, contents: string) {
+  readonly packed = new Map<string, readonly string[]>();
+
+  writeText(path: string, contents: string, media: readonly string[]) {
     this.files.set(path, contents);
+    this.packed.set(path, media);
     this.modified.set(path, ++this.clock);
     return Promise.resolve();
+  }
+
+  readonly media = new Map<string, Blob>();
+
+  async putMedia(file: Blob, extension: string) {
+    const id = `${String(this.media.size).padStart(64, "0")}.${extension}`;
+    this.media.set(id, file);
+    return Promise.resolve(id);
+  }
+
+  mediaUrl(id: string) {
+    return `asset://media/${id}`;
   }
 
   clock = 0;
@@ -70,6 +86,36 @@ function setup() {
   const host = new FakeHost();
   return { host, files: new StoryFiles(host, () => NOW) };
 }
+
+describe("StoryFiles media", () => {
+  it("moves pictures stored inline by older versions into the package", async () => {
+    const { host, files } = setup();
+    const line = story.phases[0]?.beats[0];
+    if (line === undefined) throw new Error("fixture changed");
+    const withPicture = addBlock(story, line.id, {
+      type: "image",
+      src: "data:image/png;base64,iVBORw0KGgo=",
+    }).story;
+    host.files.set("D:/Vanha.sampo", serializeStory(withPicture));
+
+    const opened = await files.openPath("D:/Vanha.sampo");
+    if (opened.status !== "opened") throw new Error("did not open");
+    const picture = opened.story.phases[0]?.beats[0]?.blocks.find((b) => b.type === "image");
+
+    expect(picture?.type === "image" && picture.src).toBe(`media:${"0".repeat(64)}.png`);
+    expect(files.mediaUrl(picture?.type === "image" ? picture.src : "")).toBe(
+      `asset://media/${"0".repeat(64)}.png`,
+    );
+
+    await files.save(opened.story, "D:/Vanha.sampo");
+    expect(host.packed.get("D:/Vanha.sampo")).toEqual([`${"0".repeat(64)}.png`]);
+  });
+
+  it("leaves addresses that are not packed files as they are", () => {
+    const { files } = setup();
+    expect(files.mediaUrl("data:image/webp;base64,AAAA")).toBe("data:image/webp;base64,AAAA");
+  });
+});
 
 describe("StoryFiles.open", () => {
   it("reports cancellation without reading anything", async () => {

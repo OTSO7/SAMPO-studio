@@ -2,16 +2,29 @@
 const MAX_EDGE = 1920;
 const QUALITY = 0.85;
 
-/** The pictures among dropped or pasted files. */
-export function imageFiles(files: FileList | null | undefined): File[] {
-  return [...(files ?? [])].filter((file) => file.type.startsWith("image/"));
+/** Sound formats the desktop side accepts, by file extension. */
+const SOUND_EXTENSIONS = ["mp3", "ogg", "opus", "wav", "m4a", "webm", "flac"];
+
+/** The pictures and sounds among dropped, pasted or picked files. */
+export function mediaFiles(files: FileList | null | undefined): File[] {
+  return [...(files ?? [])].filter((file) => isImage(file) || soundExtension(file) !== null);
+}
+
+export function isImage(file: File): boolean {
+  return file.type.startsWith("image/");
+}
+
+/** `mp3` for "Tuuli.MP3", or `null` when the file is not a sound the story can hold. */
+export function soundExtension(file: File): string | null {
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return SOUND_EXTENSIONS.includes(extension) ? extension : null;
 }
 
 /**
  * Shrinks a picture to at most 1920 px on its long edge and re-encodes it as WebP, so a
- * story full of references stays a file that saves in a blink. Resolves to a data URL.
+ * story full of references stays a file that saves in a blink.
  */
-export async function readImage(file: Blob): Promise<string> {
+export async function readImage(file: Blob): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
@@ -24,15 +37,5 @@ export async function readImage(file: Blob): Promise<string> {
     canvas.toBlob(resolve, "image/webp", QUALITY);
   });
   if (encoded === null) throw new Error("The picture could not be encoded");
-
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      resolve(reader.result as string);
-    };
-    reader.onerror = () => {
-      reject(reader.error ?? new Error("The picture could not be read"));
-    };
-    reader.readAsDataURL(encoded);
-  });
+  return encoded;
 }
