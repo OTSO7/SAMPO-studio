@@ -399,119 +399,140 @@ export function Board({ story }: { story: Story }) {
     >
       <div className="board__main">
         <header className="board__header">
-          <EditableText
-            className="board__title"
-            label="story title"
-            value={story.title}
-            onCommit={(title) => {
-              edit((s) => setStoryTitle(s, title));
-            }}
-          />
-          <p className="board__meta">
-            {story.phases.length} {story.phases.length === 1 ? "phase" : "phases"} · {cards}{" "}
-            {cards === 1 ? "card" : "cards"} · {lines} {lines === 1 ? "line" : "lines"}
-            {cards > 0 && (
-              <>
-                {" · "}
-                <span className="board__progress">
-                  {finals}/{cards} final
-                </span>
-              </>
-            )}
-          </p>
-          <div className="view-switch" role="tablist" aria-label="View">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={view === "board"}
-              onClick={() => {
-                changeView("board");
-              }}
-            >
-              Board
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={view === "lines"}
-              onClick={() => {
-                changeView("lines");
-              }}
-            >
-              Lines
-              {lines > 0 && <span className="view-switch__count">{lines}</span>}
-            </button>
+          <div className="board__heading">
+            <div className="board__identity">
+              <EditableText
+                className="board__title"
+                label="story title"
+                value={story.title}
+                onCommit={(title) => {
+                  edit((s) => setStoryTitle(s, title));
+                }}
+              />
+              <p className="board__meta">
+                {story.phases.length} {story.phases.length === 1 ? "phase" : "phases"} · {cards}{" "}
+                {cards === 1 ? "card" : "cards"} · {lines} {lines === 1 ? "line" : "lines"}
+              </p>
+              {cards > 0 && (
+                <div
+                  className="board__progress"
+                  role="meter"
+                  aria-label="Final cards"
+                  aria-valuemin={0}
+                  aria-valuemax={cards}
+                  aria-valuenow={finals}
+                  title={`${finals} of ${cards} cards final`}
+                >
+                  <span className="board__progress-track">
+                    <span
+                      className="board__progress-fill"
+                      style={{ width: `${(finals / cards) * 100}%` }}
+                    />
+                  </span>
+                  <span className="board__progress-label">
+                    {finals}/{cards} final
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="board__actions">
+              <QuickFind story={story} onPick={pickResult} />
+              <button
+                type="button"
+                className="board__tool"
+                onClick={() => {
+                  setSettingsOpen(true);
+                }}
+              >
+                Card types &amp; cast
+              </button>
+              <ExportMenu />
+            </div>
           </div>
-          <div className="board__tools">
-            <QuickFind story={story} onPick={pickResult} />
-            {view === "board" && (
-              <>
-                <div className="status-filter" role="group" aria-label="Show cards">
-                  {[null, ...BEAT_STATUSES].map((status) => (
+          <div className="board__toolbar">
+            <div className="view-switch" role="tablist" aria-label="View">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={view === "board"}
+                onClick={() => {
+                  changeView("board");
+                }}
+              >
+                Board
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={view === "lines"}
+                onClick={() => {
+                  changeView("lines");
+                }}
+              >
+                Lines
+                {lines > 0 && <span className="view-switch__count">{lines}</span>}
+              </button>
+            </div>
+            <div className="board__tools">
+              {view === "board" && (
+                <>
+                  <div className="status-filter" role="group" aria-label="Show cards">
+                    {[null, ...BEAT_STATUSES].map((status) => (
+                      <button
+                        key={status ?? "all"}
+                        type="button"
+                        aria-pressed={statusFilter === status}
+                        onClick={() => {
+                          setStatusFilter(status);
+                        }}
+                      >
+                        {status === null ? "All" : STATUS_NAMES[status]}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="zoom" role="group" aria-label="Zoom">
                     <button
-                      key={status ?? "all"}
                       type="button"
-                      aria-pressed={statusFilter === status}
+                      aria-label="Zoom out"
+                      disabled={zoom <= ZOOM_MIN}
                       onClick={() => {
-                        setStatusFilter(status);
+                        stepZoom(-1);
                       }}
                     >
-                      {status === null ? "All" : STATUS_NAMES[status]}
+                      −
                     </button>
-                  ))}
-                </div>
-                <div className="zoom" role="group" aria-label="Zoom">
+                    <button
+                      type="button"
+                      className="zoom__value"
+                      title="Reset zoom"
+                      onClick={() => {
+                        changeZoom(1);
+                      }}
+                    >
+                      {Math.round(zoom * 100)}%
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Zoom in"
+                      disabled={zoom >= ZOOM_MAX}
+                      onClick={() => {
+                        stepZoom(1);
+                      }}
+                    >
+                      +
+                    </button>
+                  </div>
                   <button
                     type="button"
-                    aria-label="Zoom out"
-                    disabled={zoom <= ZOOM_MIN}
-                    onClick={() => {
-                      stepZoom(-1);
-                    }}
+                    className="board__tool"
+                    aria-pressed={showPacing}
+                    onClick={togglePacing}
                   >
-                    −
+                    Pacing
                   </button>
-                  <button
-                    type="button"
-                    className="zoom__value"
-                    title="Reset zoom"
-                    onClick={() => {
-                      changeZoom(1);
-                    }}
-                  >
-                    {Math.round(zoom * 100)}%
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Zoom in"
-                    disabled={zoom >= ZOOM_MAX}
-                    onClick={() => {
-                      stepZoom(1);
-                    }}
-                  >
-                    +
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  className="board__tool"
-                  aria-pressed={showPacing}
-                  onClick={togglePacing}
-                >
-                  Pacing
-                </button>
-              </>
-            )}
-            <button
-              type="button"
-              className="board__tool"
-              onClick={() => {
-                setSettingsOpen(true);
-              }}
-            >
-              Card types &amp; cast
-            </button>
-            <ExportMenu />
+                </>
+              )}
+            </div>
           </div>
         </header>
 

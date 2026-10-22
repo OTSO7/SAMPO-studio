@@ -23,13 +23,20 @@ export function Statusbar({ onShowShortcuts }: { onShowShortcuts: () => void }) 
   else if (dirty) saveLabel = "Edited";
   else if (status.kind === "saved") saveLabel = `Saved ${timeFormat.format(status.at)}`;
   const error = status.kind === "failed" || status.kind === "conflict";
+  const saved = status.kind === "saved" && !dirty;
 
   return (
     <footer className="shell__statusbar">
       <span>{file}</span>
       <span className="shell__status-right">
         {saveLabel !== null && (
-          <span className={error ? "shell__status--error" : undefined}>{saveLabel}</span>
+          // Keyed by the label, so every save visibly lands instead of silently changing text.
+          <span
+            key={saveLabel}
+            className={`shell__save ${error ? "shell__status--error" : ""} ${saved ? "is-saved" : ""}`}
+          >
+            {saveLabel}
+          </span>
         )}
         <button type="button" className="shell__status-button" onClick={onShowShortcuts}>
           Shortcuts <kbd className="kbd">?</kbd>

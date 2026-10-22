@@ -53,7 +53,8 @@ export const BeatCard = memo(function BeatCard({
         <span className="card__number">{number}</span>
         {typeName !== null && <span className="card__type">{typeName}</span>}
         {beat.status !== undefined && (
-          <span className="card__status" data-status={beat.status}>
+          // Keyed by status so each change replays the stamp animation.
+          <span key={beat.status} className="card__status" data-status={beat.status}>
             {STATUS_NAMES[beat.status]}
           </span>
         )}

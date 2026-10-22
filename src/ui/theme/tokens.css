@@ -57,6 +57,8 @@
 
   /* Motion */
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* A small overshoot for things that land: a new card, a status stamp, a filling bar. */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --duration-fast: 120ms;
   --duration-base: 200ms;
   --duration-slow: 360ms;
@@ -64,6 +66,8 @@
   /* Layout */
   --titlebar-height: 44px;
   --statusbar-height: 28px;
+  /* Every toolbar control shares one height, so rows line up. */
+  --control-height: 32px;
 }
 
 @media (prefers-reduced-motion: reduce) {

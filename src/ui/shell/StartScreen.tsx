@@ -27,19 +27,43 @@ export function StartScreen() {
   };
 
   const actions = [
-    { label: "New story", keys: ["Ctrl", "N"], run: () => newStory(deps) },
-    { label: "Open…", keys: ["Ctrl", "O"], run: () => openStory(deps) },
-    { label: "Paste script", keys: ["Ctrl", "V"], run: pasteFromClipboard },
+    {
+      label: "New story",
+      hint: "Start from an empty board",
+      keys: ["Ctrl", "N"],
+      run: () => newStory(deps),
+    },
+    {
+      label: "Open…",
+      hint: "Pick a .sampo file",
+      keys: ["Ctrl", "O"],
+      run: () => openStory(deps),
+    },
+    {
+      label: "Paste script",
+      hint: "Turn a document into phases and cards",
+      keys: ["Ctrl", "V"],
+      run: pasteFromClipboard,
+    },
   ];
 
   return (
     <section className="start" aria-label="Start">
-      <p className="start__eyebrow">No story open</p>
+      <header className="start__hero">
+        <h1 className="start__title">SAMPO Studio</h1>
+      </header>
       <ul className="start__actions">
-        {actions.map((action) => (
-          <li key={action.label}>
-            <button type="button" className="start__action" onClick={() => void action.run()}>
-              <span>{action.label}</span>
+        {actions.map((action, index) => (
+          <li key={action.label} style={{ animationDelay: `${120 + index * 60}ms` }}>
+            <button
+              type="button"
+              className={`start__action ${index === 0 ? "start__action--primary" : ""}`}
+              onClick={() => void action.run()}
+            >
+              <span className="start__action-text">
+                <span className="start__action-label">{action.label}</span>
+                <span className="start__action-hint">{action.hint}</span>
+              </span>
               <Kbd keys={action.keys} />
             </button>
           </li>

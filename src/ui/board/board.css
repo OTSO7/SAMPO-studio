@@ -19,18 +19,74 @@
   min-height: 0;
 }
 
+/* Two deliberate rows: what the story is and where to go (top), how to look at it (below). */
 .board__header {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6) var(--space-4);
+}
+
+.board__heading,
+.board__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+}
+
+.board__identity {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--space-5);
-  padding: var(--space-6) var(--space-6) var(--space-5);
+  gap: var(--space-2) var(--space-5);
+  min-width: 0;
+}
+
+.board__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
 }
 
 .board__title {
   font-family: var(--font-story);
-  font-size: var(--text-xl);
-  font-weight: 400;
+  font-size: 1.75rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* Fills as cards are marked final; the one number a producer looks for. */
+.board__progress {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: center;
+}
+
+.board__progress-track {
+  position: relative;
+  width: 96px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--hairline);
+}
+
+.board__progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--ochre), var(--ochre-text));
+  transition: width var(--duration-slow) var(--ease-spring);
+}
+
+.board__progress-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--bone-muted);
 }
 
 .board__meta {
@@ -117,7 +173,18 @@ input.editable {
   display: grid;
   gap: var(--space-3);
   flex: none;
-  width: 272px;
+  width: 296px;
+}
+
+/* An empty location is an invitation, not content: it appears when the column is in use. */
+.column__location.editable--empty {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.column:hover .column__location.editable--empty,
+.column__location.editable--empty:focus-visible {
+  opacity: 1;
 }
 
 .column__head {
@@ -232,30 +299,50 @@ input.editable {
   display: grid;
   gap: var(--space-2);
   width: 100%;
-  padding: var(--space-3);
+  padding: 14px var(--space-4) var(--space-4);
   border: 1px solid var(--hairline);
-  border-left: 2px solid var(--swatch, var(--bone-faint));
-  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--swatch, var(--bone-faint));
+  border-radius: var(--radius-md);
   background: var(--ink-raised);
   text-align: left;
   color: var(--bone);
   cursor: grab;
   touch-action: none;
+  animation: card-in var(--duration-slow) var(--ease-out) both;
   transition:
     border-color var(--duration-fast) var(--ease-out),
-    background-color var(--duration-fast) var(--ease-out);
+    background-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out),
+    opacity var(--duration-base) var(--ease-out);
 }
 
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* Cards lift a little under the pointer: they are things you pick up and move. */
 .card:hover {
   border-color: var(--hairline-strong);
   border-left-color: var(--swatch, var(--bone-faint));
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+  transform: translateY(-1px);
+}
+
+.card:active {
+  transform: translateY(0) scale(0.995);
 }
 
 .card.is-selected {
   border-color: var(--ochre-text);
   border-left-color: var(--swatch, var(--bone-faint));
   background: var(--ink-overlay);
-  box-shadow: 0 0 0 1px var(--ochre-text);
+  box-shadow:
+    0 0 0 1px var(--ochre-text),
+    0 10px 30px rgb(169 102 9 / 18%);
 }
 
 .card.is-hidden {
@@ -272,7 +359,8 @@ input.editable {
 .card__number {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--bone-faint);
+  letter-spacing: 0.04em;
+  color: var(--bone-muted);
 }
 
 .card__type {
@@ -310,9 +398,9 @@ input.editable {
   display: -webkit-box;
   overflow: hidden;
   font-family: var(--font-story);
-  font-size: var(--text-sm);
-  line-height: 1.5;
-  color: var(--bone-muted);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: rgb(233 227 213 / 86%);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 4;
 }
@@ -336,9 +424,9 @@ input.editable {
   display: -webkit-box;
   overflow: hidden;
   font-family: var(--font-story);
-  font-size: var(--text-sm);
+  font-size: 0.875rem;
   font-style: italic;
-  line-height: 1.45;
+  line-height: 1.5;
   color: var(--bone);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -830,20 +918,26 @@ body.is-resizing .inspector__resizer::after {
 }
 
 .board__tool {
-  height: 28px;
+  height: var(--control-height);
   padding: 0 var(--space-3);
   border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: none;
   font-size: var(--text-sm);
   white-space: nowrap;
   color: var(--bone-muted);
   cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
 .board__tool:hover,
 .board__tool[aria-expanded="true"] {
   border-color: var(--bone-faint);
+  background: var(--ink-raised);
   color: var(--bone);
 }
 
@@ -1685,7 +1779,7 @@ body.is-resizing-rows * {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  height: 26px;
+  height: calc(var(--control-height) - 6px);
   padding: 0 var(--space-3);
   border: 0;
   border-radius: var(--radius-sm);
@@ -1714,12 +1808,12 @@ body.is-resizing-rows * {
 .zoom {
   display: inline-flex;
   border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
 }
 
 .zoom button {
   min-width: 28px;
-  height: 26px;
+  height: calc(var(--control-height) - 2px);
   padding: 0 var(--space-2);
   border: 0;
   background: none;
@@ -1751,11 +1845,11 @@ body.is-resizing-rows * {
 .status-filter {
   display: inline-flex;
   border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
 }
 
 .status-filter button {
-  height: 26px;
+  height: calc(var(--control-height) - 2px);
   padding: 0 var(--space-2);
   border: 0;
   background: none;
@@ -1785,10 +1879,6 @@ body.is-resizing-rows * {
   opacity: 0.22;
 }
 
-.board__progress {
-  color: var(--bone-muted);
-}
-
 /* Framed, so a state never reads as another card type of the same colour. */
 .card__status {
   padding: 0 var(--space-1);
@@ -1799,6 +1889,18 @@ body.is-resizing-rows * {
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+.card__status {
+  animation: stamp-in var(--duration-slow) var(--ease-spring) both;
+}
+
+/* A status lands like a rubber stamp: slightly too big, then settles. */
+@keyframes stamp-in {
+  from {
+    opacity: 0;
+    transform: scale(1.6) rotate(-6deg);
+  }
 }
 
 .card__status[data-status="review"] {
@@ -1888,9 +1990,9 @@ body.is-resizing-rows * {
   display: flex;
   align-items: center;
   width: 240px;
-  height: 28px;
+  height: var(--control-height);
   border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: var(--ink-raised);
   transition:
     width var(--duration-base) var(--ease-out),
@@ -2017,4 +2119,58 @@ body.is-resizing-rows * {
   border-radius: 2px;
   background: var(--ochre-wash);
   color: var(--ochre-text);
+}
+
+/* ---------- shared feel ---------- */
+
+/* Every control eases between states instead of snapping. */
+.status-filter button,
+.status-picker__item,
+.view-switch button,
+.zoom button,
+.script__add button,
+.type-picker__item,
+.column__end button,
+.board__add-phase,
+.menu__item,
+.lines__status {
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+/* A press you can feel: buttons give a little under the pointer. */
+.board__tool:active,
+.status-filter button:active,
+.status-picker__item:active,
+.view-switch button:active,
+.zoom button:active:not(:disabled),
+.script__add button:active,
+.type-picker__item:active,
+.column__end button:active,
+.board__add-phase:active,
+.lines__status:active {
+  transform: scale(0.96);
+}
+
+.column__end button:hover,
+.board__add-phase:hover,
+.script__add button:hover {
+  background: var(--ink-raised);
+}
+
+/* Dropdowns unfold from the control that opened them. */
+.menu__list {
+  transform-origin: top right;
+  animation: menu-in var(--duration-base) var(--ease-out) both;
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
 }
