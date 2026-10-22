@@ -1331,39 +1331,6 @@ body.is-resizing-rows * {
   color: var(--bone);
 }
 
-/* ---------- inspector: type picker ---------- */
-
-.type-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-}
-
-.type-picker__item {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  height: 28px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--hairline);
-  border-radius: 14px;
-  background: none;
-  font-size: var(--text-sm);
-  color: var(--bone-muted);
-  cursor: pointer;
-}
-
-.type-picker__item:hover {
-  border-color: var(--hairline-strong);
-  color: var(--bone);
-}
-
-.type-picker__item[aria-checked="true"] {
-  border-color: var(--swatch);
-  background: var(--ink-overlay);
-  color: var(--bone);
-}
-
 /* ---------- inspector: dialogue ---------- */
 
 .speaker {
@@ -2129,7 +2096,6 @@ body.is-resizing-rows * {
 .view-switch button,
 .zoom button,
 .script__add button,
-.type-picker__item,
 .column__end button,
 .board__add-phase,
 .menu__item,
@@ -2149,7 +2115,6 @@ body.is-resizing-rows * {
 .view-switch button:active,
 .zoom button:active:not(:disabled),
 .script__add button:active,
-.type-picker__item:active,
 .column__end button:active,
 .board__add-phase:active,
 .lines__status:active {
@@ -2312,4 +2277,202 @@ body.is-resizing-rows * {
   .player.is-playing .player__toggle {
     animation: none;
   }
+}
+
+/* ---------- inspector, calm layout ---------- */
+
+.inspector__heading {
+  font-size: 1.375rem;
+  font-weight: 500;
+}
+
+/* Settings as a two-column table: labels line up, values line up, nothing wraps. */
+.inspector__props {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  margin: 0;
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.inspector__props dt {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--bone-faint);
+}
+
+.inspector__props dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.inspector__props .tension-field {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.inspector__props .tension {
+  height: 22px;
+}
+
+/* The card type: one compact menu with the type's colour, however many types exist. */
+.type-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 30px;
+  padding: 0 var(--space-6) 0 var(--space-3);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-md);
+  background: var(--ink-raised);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.type-select::after {
+  content: "";
+  position: absolute;
+  right: 11px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-right: 1px solid var(--bone-faint);
+  border-bottom: 1px solid var(--bone-faint);
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+
+.type-select:hover {
+  border-color: var(--bone-faint);
+}
+
+.type-select:focus-within {
+  border-color: var(--ochre);
+}
+
+.type-select select {
+  appearance: none;
+  border: 0;
+  background: none;
+  font-size: var(--text-sm);
+  color: var(--bone);
+  cursor: pointer;
+  outline: none;
+}
+
+.type-select option {
+  background: var(--ink-overlay);
+  color: var(--bone);
+}
+
+/* Block tools float over the bottom corner, clear of a line's details, on hover or focus. */
+.script__block {
+  position: relative;
+}
+
+.script__tools {
+  position: absolute;
+  bottom: -12px;
+  right: var(--space-2);
+  z-index: 2;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 2px;
+  padding: 2px var(--space-1);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-md);
+  background: var(--ink-overlay);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 45%);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(3px);
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.script__block:hover > .script__tools,
+.script__block:focus-within > .script__tools {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+.script__tools .script__tool {
+  height: 22px;
+  white-space: nowrap;
+}
+
+/* A line's details stay on one row: who, how, how long, and its recording. */
+.script__block--line .script__meta {
+  flex-wrap: nowrap;
+}
+
+.script__block--line .script__direction {
+  flex: 1 1 60px;
+}
+
+.script__meta-end {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.script__take-add {
+  height: 22px;
+  padding: 0 var(--space-2);
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  color: var(--bone-faint);
+  cursor: pointer;
+}
+
+.script__take-add:hover {
+  border-color: var(--ochre);
+  color: var(--ochre-text);
+}
+
+/* Pictures in the panel are previews; the full size is one click away. */
+.inspector .script__image img {
+  max-height: 200px;
+}
+
+.script__add {
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.script__add-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.script__hint {
+  margin: calc(-1 * var(--space-1)) 0 0;
+}
+
+/* Presenting: empty fields and editing prompts stay out of sight until the pointer asks. */
+.script--large .script__take-add,
+.script--large .script__direction:placeholder-shown {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.script--large .script__block:hover .script__take-add,
+.script--large .script__block:hover .script__direction:placeholder-shown,
+.script--large .script__direction:focus {
+  opacity: 1;
 }

@@ -76,22 +76,26 @@ export function Inspector({
 
       <div className="inspector__body">
         <HeadingInput beat={beat} edit={edit} />
-        <CardTypePicker beat={beat} story={story} edit={edit} />
 
-        <div className="inspector__field">
-          <span className="inspector__label">Status</span>
-          <StatusPicker beat={beat} edit={edit} />
-        </div>
+        {/* The card's settings as one compact table, so the script starts high on the panel. */}
+        <dl className="inspector__props">
+          <dt>Type</dt>
+          <dd>
+            <CardTypePicker beat={beat} story={story} edit={edit} />
+          </dd>
+          <dt>Status</dt>
+          <dd>
+            <StatusPicker beat={beat} edit={edit} />
+          </dd>
+          <dt>Tension</dt>
+          <dd>
+            <TensionPicker beat={beat} edit={edit} />
+          </dd>
+        </dl>
 
-        <div className="inspector__field">
-          <span className="inspector__label">Tension</span>
-          <TensionPicker beat={beat} edit={edit} />
-        </div>
-
-        <div className="inspector__field">
-          <span className="inspector__label">Script</span>
+        <section className="inspector__script" aria-label="Script">
           <ScriptEditor beat={beat} story={story} edit={edit} autoFocus={autoFocus} />
-        </div>
+        </section>
       </div>
 
       <footer className="inspector__actions">

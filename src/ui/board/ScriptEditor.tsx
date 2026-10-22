@@ -267,99 +267,106 @@ export function ScriptEditor({
               className={`script__block script__block--${block.type}`}
               data-block-id={block.id}
             >
-              <div className="script__meta">
-                {block.type === "line" ? (
-                  <>
-                    <SpeakerCombo
-                      value={block.speaker}
-                      characters={characters}
-                      onSelect={(speaker) => {
-                        edit((s) => setLineSpeaker(s, block.id, speaker));
-                      }}
-                      onCreate={(name) => {
-                        edit((s) => {
-                          const { story: withCharacter, entityId } = ensureCharacter(s, name);
-                          return setLineSpeaker(withCharacter, block.id, entityId);
-                        });
-                      }}
-                      onDone={() => {
-                        pendingFocus.current = { blockId: block.id, field: "text" };
-                      }}
-                    />
-                    <input
-                      className="script__direction"
-                      aria-label="Direction"
-                      placeholder="(direction)"
-                      value={block.direction ?? ""}
-                      onChange={(event) => {
-                        const direction = event.target.value;
-                        edit(
-                          (s) => setLineDirection(s, block.id, direction),
-                          `direction:${block.id}`,
-                        );
-                      }}
-                    />
-                    {block.take === undefined ? (
-                      <button
-                        type="button"
-                        className="script__tool script__take-add"
-                        title="Attach a recording of this line, scratch or final"
-                        onClick={() => {
-                          takeFor.current = block.id;
-                          takeInputRef.current?.click();
+              {block.type !== "action" && (
+                <div className="script__meta">
+                  {block.type === "line" ? (
+                    <>
+                      <SpeakerCombo
+                        value={block.speaker}
+                        characters={characters}
+                        onSelect={(speaker) => {
+                          edit((s) => setLineSpeaker(s, block.id, speaker));
                         }}
-                      >
-                        + Take
-                      </button>
-                    ) : (
-                      <span className="script__take">
-                        <AudioPlayer compact url={files.mediaUrl(block.take)} label="Take" />
-                        <button
-                          type="button"
-                          className="script__tool script__tool--danger"
-                          aria-label="Remove take"
-                          onClick={() => {
-                            edit((s) => setLineTake(s, block.id, null));
-                          }}
-                        >
-                          ×
-                        </button>
+                        onCreate={(name) => {
+                          edit((s) => {
+                            const { story: withCharacter, entityId } = ensureCharacter(s, name);
+                            return setLineSpeaker(withCharacter, block.id, entityId);
+                          });
+                        }}
+                        onDone={() => {
+                          pendingFocus.current = { blockId: block.id, field: "text" };
+                        }}
+                      />
+                      <input
+                        className="script__direction"
+                        aria-label="Direction"
+                        placeholder="(direction)"
+                        value={block.direction ?? ""}
+                        onChange={(event) => {
+                          const direction = event.target.value;
+                          edit(
+                            (s) => setLineDirection(s, block.id, direction),
+                            `direction:${block.id}`,
+                          );
+                        }}
+                      />
+                      <span className="script__meta-end">
+                        {block.text.trim() !== "" && (
+                          <span className="script__duration" title="Estimated spoken length">
+                            ≈ {estimateSeconds(block.text)} s
+                          </span>
+                        )}
+                        {block.take === undefined ? (
+                          <button
+                            type="button"
+                            className="script__take-add"
+                            title="Attach a recording of this line, scratch or final"
+                            onClick={() => {
+                              takeFor.current = block.id;
+                              takeInputRef.current?.click();
+                            }}
+                          >
+                            + Take
+                          </button>
+                        ) : (
+                          <span className="script__take">
+                            <AudioPlayer compact url={files.mediaUrl(block.take)} label="Take" />
+                            <button
+                              type="button"
+                              className="script__tool script__tool--danger"
+                              aria-label="Remove take"
+                              title="Remove take"
+                              onClick={() => {
+                                edit((s) => setLineTake(s, block.id, null));
+                              }}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </>
-                ) : (
-                  <span className="script__kind">{block.type === "note" ? "Note" : "Text"}</span>
-                )}
-                <span className="script__tools">
-                  {block.type === "line" && block.text.trim() !== "" && (
-                    <span className="script__duration" title="Estimated spoken length">
-                      ≈ {estimateSeconds(block.text)} s
-                    </span>
+                    </>
+                  ) : (
+                    <span className="script__kind">Note</span>
                   )}
-                  {BLOCK_TYPES.filter((option) => option.type !== block.type).map((option) => (
-                    <button
-                      key={option.type}
-                      type="button"
-                      className="script__tool"
-                      onClick={() => {
-                        edit((s) => setBlockType(s, block.id, option.type));
-                      }}
-                    >
-                      → {option.label}
-                    </button>
-                  ))}
+                </div>
+              )}
+              {/* Floats over the block's corner on hover, so the script reads clean at rest. */}
+              <span className="script__tools" role="toolbar" aria-label="Block tools">
+                {BLOCK_TYPES.filter((option) => option.type !== block.type).map((option) => (
                   <button
+                    key={option.type}
                     type="button"
-                    className="script__tool script__tool--danger"
-                    aria-label="Remove"
+                    className="script__tool"
                     onClick={() => {
-                      edit((s) => removeBlock(s, block.id));
+                      edit((s) => setBlockType(s, block.id, option.type));
                     }}
                   >
-                    ×
+                    → {option.label}
                   </button>
-                </span>
-              </div>
+                ))}
+                <button
+                  type="button"
+                  className="script__tool script__tool--danger"
+                  aria-label="Remove"
+                  title="Remove"
+                  onClick={() => {
+                    edit((s) => removeBlock(s, block.id));
+                  }}
+                >
+                  ×
+                </button>
+              </span>
               <textarea
                 data-autofocus={index === 0 ? "" : undefined}
                 className="script__text"
@@ -384,49 +391,54 @@ export function ScriptEditor({
         )}
       </div>
 
+      {/* Writing on the left, media on the right: two kinds of adding, two groups. */}
       <div className="script__add">
-        <button
-          type="button"
-          onClick={() => {
-            insert({ type: "action" });
-          }}
-        >
-          + Text
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            insert({ type: "line", speaker: nextSpeaker(beat.blocks.length) });
-          }}
-        >
-          + Line
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            insert({ type: "note" });
-          }}
-        >
-          + Note
-        </button>
-        <button
-          type="button"
-          title="Or paste (Ctrl V) or drop a picture onto the card"
-          onClick={() => {
-            pickFiles("image/*");
-          }}
-        >
-          + Image
-        </button>
-        <button
-          type="button"
-          title="Music, ambience or an effect. Or drop a sound file onto the card"
-          onClick={() => {
-            pickFiles("audio/*");
-          }}
-        >
-          + Sound
-        </button>
+        <span className="script__add-group" role="group" aria-label="Add writing">
+          <button
+            type="button"
+            onClick={() => {
+              insert({ type: "action" });
+            }}
+          >
+            + Text
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              insert({ type: "line", speaker: nextSpeaker(beat.blocks.length) });
+            }}
+          >
+            + Line
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              insert({ type: "note" });
+            }}
+          >
+            + Note
+          </button>
+        </span>
+        <span className="script__add-group" role="group" aria-label="Add media">
+          <button
+            type="button"
+            title="Or paste (Ctrl V) or drop a picture onto the card"
+            onClick={() => {
+              pickFiles("image/*");
+            }}
+          >
+            + Image
+          </button>
+          <button
+            type="button"
+            title="Music, ambience or an effect. Or drop a sound file onto the card"
+            onClick={() => {
+              pickFiles("audio/*");
+            }}
+          >
+            + Sound
+          </button>
+        </span>
         <input
           ref={fileInputRef}
           type="file"
@@ -449,8 +461,8 @@ export function ScriptEditor({
             if (file !== undefined && lineId !== null) attachTake(lineId, file);
           }}
         />
-        <span className="script__hint">Ctrl ↵ next line · Alt 1–9 speaker · Ctrl V image</span>
       </div>
+      <p className="script__hint">Ctrl ↵ next line · Alt 1–9 speaker · Ctrl V image</p>
 
       {viewing !== null && (
         <ImageViewer

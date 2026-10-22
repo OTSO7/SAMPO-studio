@@ -84,6 +84,9 @@ export function LinesView({ story, edit, onOpenCard }: LinesViewProps) {
     <div className="lines">
       <header className="lines__head">
         <div className="lines__filters" role="radiogroup" aria-label="Character">
+          <span className="lines__filter-label" aria-hidden="true">
+            Character
+          </span>
           <FilterChip
             label="All"
             count={lines.length}
@@ -116,6 +119,9 @@ export function LinesView({ story, edit, onOpenCard }: LinesViewProps) {
           )}
         </div>
         <div className="lines__filters" role="radiogroup" aria-label="Card status">
+          <span className="lines__filter-label" aria-hidden="true">
+            Status
+          </span>
           <FilterChip
             label="Any status"
             count={lines.length}

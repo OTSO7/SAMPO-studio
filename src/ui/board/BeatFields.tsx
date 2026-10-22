@@ -10,26 +10,27 @@ interface FieldProps {
   edit: (recipe: (story: Story) => Story, group?: string) => void;
 }
 
+/** One compact control, however many types a story defines; its colour dot is the card's. */
 export function CardTypePicker({ beat, story, edit }: FieldProps) {
+  const current = story.cardTypes.find((type) => type.id === beat.typeId);
   return (
-    <div className="type-picker" role="radiogroup" aria-label="Card type">
-      {story.cardTypes.map((type) => (
-        <button
-          key={type.id}
-          type="button"
-          role="radio"
-          aria-checked={beat.typeId === type.id}
-          className="type-picker__item"
-          data-swatch={type.color}
-          onClick={() => {
-            edit((s) => updateBeat(s, beat.id, { typeId: type.id }));
-          }}
-        >
-          <span className="swatch-dot" />
-          {type.name}
-        </button>
-      ))}
-    </div>
+    <label className="type-select" data-swatch={current?.color ?? "bone"}>
+      <span className="swatch-dot" aria-hidden="true" />
+      <select
+        aria-label="Card type"
+        value={beat.typeId}
+        onChange={(event) => {
+          const typeId = story.cardTypes.find((type) => type.id === event.target.value)?.id;
+          if (typeId !== undefined) edit((s) => updateBeat(s, beat.id, { typeId }));
+        }}
+      >
+        {story.cardTypes.map((type) => (
+          <option key={type.id} value={type.id}>
+            {type.name}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

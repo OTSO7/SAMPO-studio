@@ -297,3 +297,23 @@
     transform: translateX(24px);
   }
 }
+
+/* An empty location is an editing prompt, not part of the presentation. */
+.focus__intro .editable--empty {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.focus__intro:hover .editable--empty,
+.focus__intro .editable--empty:focus-visible {
+  opacity: 1;
+}
+
+.focus-card__heading:placeholder-shown:not(:focus) {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.focus-card:hover .focus-card__heading:placeholder-shown {
+  opacity: 1;
+}
