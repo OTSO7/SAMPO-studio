@@ -1,7 +1,8 @@
 name: Release
 
-# Builds the Windows installer whenever a version tag is pushed, e.g. `git tag v0.2.0`.
-# The installer is attached to a draft GitHub release, ready to publish and download.
+# Builds and signs the Windows installer whenever a version tag is pushed, e.g. `git tag v0.4.0`.
+# The installer and the update manifest (latest.json) are attached to a draft GitHub release.
+# Publish the draft: installed copies only see updates from published releases.
 on:
   push:
     tags: ["v*"]
@@ -37,8 +38,12 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Updates are only accepted when signed with the key whose public part is in tauri.conf.json.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: SAMPO Studio ${{ github.ref_name }}
           releaseBody: Download the setup file below and run it. No administrator rights needed.
           releaseDraft: true
+          includeUpdaterJson: true
