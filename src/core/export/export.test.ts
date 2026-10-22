@@ -28,7 +28,7 @@ describe("collectVoiceLines", () => {
     const card = story.phases[0]?.beats[1];
     if (card === undefined) throw new Error("fixture changed");
     const reviewed = updateBeat(story, card.id, { status: "review" });
-    expect(collectVoiceLines(reviewed).map((line) => line.status)).toEqual(["Review", "Draft"]);
+    expect(collectVoiceLines(reviewed).map((line) => line.status)).toEqual(["review", "draft"]);
   });
 
   it("includes the direction", () => {
@@ -69,7 +69,7 @@ describe("voiceLinesToCsv", () => {
         card: "1.1",
         heading: "",
         seconds: 2,
-        status: "Final",
+        status: "final",
       },
     ]);
     expect(

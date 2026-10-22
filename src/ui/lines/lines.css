@@ -148,6 +148,44 @@
   border-color: var(--ochre);
 }
 
+.lines__col-status {
+  width: 96px;
+}
+
+/* Same framed badge as on the board's cards; draft stays quiet. */
+.lines__status {
+  padding: 1px var(--space-1);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--bone-faint);
+  cursor: pointer;
+}
+
+.lines__status:hover {
+  border-color: var(--bone-faint);
+  color: var(--bone);
+}
+
+.lines__status[data-status="review"] {
+  border-color: currentcolor;
+  color: var(--signal);
+}
+
+.lines__status[data-status="final"] {
+  border-color: currentcolor;
+  color: var(--ochre-text);
+}
+
+.lines__status[data-status="final"]::before {
+  content: "✓ ";
+}
+
 .lines__speaker {
   display: inline-block;
   padding-top: 5px;

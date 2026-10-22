@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { serializeStory } from "@core/file";
+import { updateBeat } from "@core/model";
 import { sampleStory } from "@core/testing/sample-story";
 import {
   closeStory,
@@ -309,6 +310,28 @@ describe("exportStory", () => {
 
     expect(await exportStory(deps, "voice-lines")).toBe(false);
     expect(deps.notices.getState().notice?.tone).toBe("info");
+  });
+
+  it("exports only the lines on final cards for the studio", async () => {
+    const { host, deps } = setup();
+    host.exportAnswer = "D:/final.csv";
+    const card = existing.phases[0]?.beats[1];
+    if (card === undefined) throw new Error("fixture changed");
+    loadDocument(deps.document, updateBeat(existing, card.id, { status: "final" }), null);
+
+    expect(await exportStory(deps, "final-voice-lines")).toBe(true);
+
+    expect(host.files.get("D:/final.csv")).toContain("VO_VARTIJA_");
+    expect(host.files.get("D:/final.csv")).not.toContain("VO_MIRJA_");
+    expect(deps.notices.getState().notice?.title).toBe("1 line exported to final.csv");
+  });
+
+  it("says so when no card is final yet", async () => {
+    const { deps } = setup();
+    loadDocument(deps.document, existing, null);
+
+    expect(await exportStory(deps, "final-voice-lines")).toBe(false);
+    expect(deps.notices.getState().notice?.title).toBe("No lines are on final cards yet");
   });
 });
 

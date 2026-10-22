@@ -4,7 +4,8 @@ import { exportStory, type ExportKind } from "@app/commands";
 import { useServices } from "@ui/services/use-services";
 
 const ITEMS: readonly { kind: ExportKind; label: string; hint: string }[] = [
-  { kind: "voice-lines", label: "Voice lines", hint: "CSV for recording sessions" },
+  { kind: "voice-lines", label: "Voice lines", hint: "CSV of every line" },
+  { kind: "final-voice-lines", label: "Final voice lines", hint: "CSV of lines ready to record" },
   { kind: "script", label: "Script", hint: "Markdown to read or print" },
 ];
 

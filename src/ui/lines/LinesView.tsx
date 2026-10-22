@@ -2,12 +2,16 @@ import { useMemo, useState } from "react";
 
 import { collectVoiceLines } from "@core/export";
 import {
+  BEAT_STATUSES,
   setLineDirection,
+  updateBeat,
   updateBlockText,
   type BeatId,
+  type BeatStatus,
   type EntityId,
   type Story,
 } from "@core/model";
+import { STATUS_NAMES } from "@ui/board/status";
 
 import "./lines.css";
 
@@ -32,6 +36,7 @@ function formatDuration(seconds: number): string {
  */
 export function LinesView({ story, edit, onOpenCard }: LinesViewProps) {
   const [speaker, setSpeaker] = useState<SpeakerFilter>("all");
+  const [status, setStatus] = useState<BeatStatus | "all">("all");
   const lines = useMemo(() => collectVoiceLines(story), [story]);
   const colors = useMemo(
     () => new Map(story.entities.map((entity) => [entity.id, entity.color ?? "slate"])),
@@ -47,12 +52,17 @@ export function LinesView({ story, edit, onOpenCard }: LinesViewProps) {
     (entity) => entity.kind === "character" && counts.has(entity.id),
   );
 
-  const visible = lines.filter((line) =>
-    speaker === "all"
-      ? true
-      : speaker === "unassigned"
-        ? line.speaker === null
-        : line.speaker === speaker,
+  const statusCounts = new Map<BeatStatus, number>();
+  for (const line of lines) statusCounts.set(line.status, (statusCounts.get(line.status) ?? 0) + 1);
+
+  const visible = lines.filter(
+    (line) =>
+      (status === "all" || line.status === status) &&
+      (speaker === "all"
+        ? true
+        : speaker === "unassigned"
+          ? line.speaker === null
+          : line.speaker === speaker),
   );
   const seconds = visible.reduce((total, line) => total + line.seconds, 0);
 
@@ -102,6 +112,27 @@ export function LinesView({ story, edit, onOpenCard }: LinesViewProps) {
             />
           )}
         </div>
+        <div className="lines__filters" role="radiogroup" aria-label="Card status">
+          <FilterChip
+            label="Any status"
+            count={lines.length}
+            active={status === "all"}
+            onClick={() => {
+              setStatus("all");
+            }}
+          />
+          {BEAT_STATUSES.map((value) => (
+            <FilterChip
+              key={value}
+              label={STATUS_NAMES[value]}
+              count={statusCounts.get(value) ?? 0}
+              active={status === value}
+              onClick={() => {
+                setStatus(value);
+              }}
+            />
+          ))}
+        </div>
         <p className="lines__summary">
           {visible.length} {visible.length === 1 ? "line" : "lines"} · ≈ {formatDuration(seconds)}
         </p>
@@ -112,6 +143,7 @@ export function LinesView({ story, edit, onOpenCard }: LinesViewProps) {
           <thead>
             <tr>
               <th className="lines__col-card">Card</th>
+              <th className="lines__col-status">Status</th>
               <th className="lines__col-speaker">Character</th>
               <th>Line</th>
               <th className="lines__col-direction">Direction</th>
@@ -132,6 +164,20 @@ export function LinesView({ story, edit, onOpenCard }: LinesViewProps) {
                     }}
                   >
                     {line.card}
+                  </button>
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="lines__status"
+                    data-status={line.status}
+                    title={`Card ${line.card} is ${STATUS_NAMES[line.status].toLowerCase()}. Click for the next status; it applies to the whole card.`}
+                    onClick={() => {
+                      const next = BEAT_STATUSES[(BEAT_STATUSES.indexOf(line.status) + 1) % 3];
+                      edit((s) => updateBeat(s, line.beatId, { status: next ?? "draft" }));
+                    }}
+                  >
+                    {STATUS_NAMES[line.status]}
                   </button>
                 </td>
                 <td>

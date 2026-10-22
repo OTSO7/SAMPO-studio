@@ -1,4 +1,4 @@
-import type { BeatId, BlockId, Entity, EntityId, LineBlock, Story } from "../model";
+import type { BeatId, BeatStatus, BlockId, Entity, EntityId, LineBlock, Story } from "../model";
 
 export interface VoiceLine {
   /** Stable across edits and reordering, so recordings stay matched to their line. */
@@ -14,7 +14,7 @@ export interface VoiceLine {
   readonly heading: string;
   readonly seconds: number;
   /** The card's status, so the studio records only lines from final cards. */
-  readonly status: string;
+  readonly status: BeatStatus;
 }
 
 const STATUS_LABELS = { draft: "Draft", review: "Review", final: "Final" } as const;
@@ -41,7 +41,7 @@ export function collectVoiceLines(story: Story): VoiceLine[] {
             card: `${phaseIndex + 1}.${beatIndex + 1}`,
             heading: beat.label ?? "",
             seconds: estimateSeconds(line.text),
-            status: STATUS_LABELS[beat.status ?? "draft"],
+            status: beat.status ?? "draft",
           };
         }),
     ),
@@ -86,7 +86,9 @@ const COLUMNS: readonly (readonly [string, keyof VoiceLine])[] = [
 export function voiceLinesToCsv(lines: readonly VoiceLine[]): string {
   const rows = [
     COLUMNS.map(([header]) => header),
-    ...lines.map((line) => COLUMNS.map(([, key]) => String(line[key]))),
+    ...lines.map((line) =>
+      COLUMNS.map(([, key]) => (key === "status" ? STATUS_LABELS[line.status] : String(line[key]))),
+    ),
   ];
   return `\uFEFF${rows.map((row) => row.map(csvCell).join(",")).join("\r\n")}\r\n`;
 }

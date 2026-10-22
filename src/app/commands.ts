@@ -95,33 +95,49 @@ export async function openLaunchFile(deps: AppDeps): Promise<boolean> {
   return applyOpen(deps, () => deps.files.openPath(path));
 }
 
-export type ExportKind = "voice-lines" | "script";
+export type ExportKind = "voice-lines" | "final-voice-lines" | "script";
 
-/** Writes a file for the team: a recording sheet of every line, or the story as a script. */
+const EXPORT_NAMES: Readonly<Record<ExportKind, string>> = {
+  "voice-lines": "voice lines",
+  "final-voice-lines": "voice lines (final)",
+  script: "script",
+};
+
+/**
+ * Writes a file for the team: a recording sheet of every line, one of only the lines on
+ * final cards for the studio, or the story as a script.
+ */
 export async function exportStory(deps: AppDeps, kind: ExportKind): Promise<boolean> {
   const { story } = deps.document.getState();
   if (story === null) return false;
 
   let contents: string;
   let summary: string;
-  if (kind === "voice-lines") {
-    const lines = collectVoiceLines(story);
+  if (kind === "script") {
+    contents = storyToMarkdown(story);
+    summary = "Script";
+  } else {
+    const all = collectVoiceLines(story);
+    const lines = kind === "voice-lines" ? all : all.filter((line) => line.status === "final");
     if (lines.length === 0) {
-      showNotice(deps.notices, { tone: "info", title: "This story has no dialogue to export yet" });
+      showNotice(deps.notices, {
+        tone: "info",
+        title:
+          all.length === 0
+            ? "This story has no dialogue to export yet"
+            : "No lines are on final cards yet",
+      });
       return false;
     }
     contents = voiceLinesToCsv(lines);
     summary = `${lines.length} ${lines.length === 1 ? "line" : "lines"}`;
-  } else {
-    contents = storyToMarkdown(story);
-    summary = "Script";
   }
 
   try {
     const result = await deps.files.export(
       contents,
-      `${story.title} - ${kind === "voice-lines" ? "voice lines" : "script"}`,
-      kind === "voice-lines" ? "csv" : "md",
+      `${story.title} - ${EXPORT_NAMES[kind]}`,
+      kind === "script" ? "md" : "csv",
     );
     if (result.status === "cancelled") return false;
     showNotice(deps.notices, {
