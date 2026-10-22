@@ -34,6 +34,8 @@ export function Statusbar({ onShowShortcuts }: { onShowShortcuts: () => void }) 
           <span
             key={saveLabel}
             className={`shell__save ${error ? "shell__status--error" : ""} ${saved ? "is-saved" : ""}`}
+            // The reason is one hover away, so a failed save can be explained and reported.
+            title={status.kind === "failed" ? status.message : undefined}
           >
             {saveLabel}
           </span>

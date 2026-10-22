@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { sampleStory } from "@core/testing/sample-story";
 import { startAutosave } from "./autosave";
 import { createDocumentStore, editStory, isDirty, loadDocument } from "./document-store";
+import { saveDocument } from "./save-document";
 import { ControlledHost, ManualTimers, settle, storyFilesFor } from "./test-helpers";
 
 const story = sampleStory();
@@ -16,6 +17,51 @@ function setup(path: string | null = "D:/Routa.sampo") {
   const autosave = startAutosave(store, storyFilesFor(host), { delayMs: 2000, timers });
   return { host, timers, store, autosave };
 }
+
+describe("saves never overlap", () => {
+  it("lets Ctrl+S wait for a running autosave instead of writing at the same time", async () => {
+    const { host, timers, store } = setup();
+    const files = storyFilesFor(host);
+    host.holdWrites = true;
+
+    editStory(store, rename("Ääni lisätty"));
+    timers.fireAll();
+    await settle();
+    expect(host.writes).toHaveLength(1);
+
+    const manual = saveDocument(store, files);
+    await settle();
+    // Still one write: the manual save waits for the autosave to finish.
+    expect(host.writes).toHaveLength(1);
+
+    host.releaseWrites();
+    expect(await manual).toBe("saved");
+    expect(host.writes).toHaveLength(1);
+    expect(store.getState().saveStatus.kind).toBe("saved");
+  });
+
+  it("still writes edits made while the earlier save was running", async () => {
+    const { host, store } = setup();
+    const files = storyFilesFor(host);
+    host.holdWrites = true;
+
+    editStory(store, rename("Ensin"));
+    const first = saveDocument(store, files);
+    await settle();
+    editStory(store, rename("Sitten"));
+    const second = saveDocument(store, files);
+    await settle();
+    expect(host.writes).toHaveLength(1);
+
+    host.holdWrites = false;
+    host.releaseWrites();
+    await first;
+    expect(await second).toBe("saved");
+    expect(host.writes).toHaveLength(2);
+    expect(host.writes[1]?.contents).toMatch(/"title": "Sitten"/u);
+    expect(isDirty(store.getState())).toBe(false);
+  });
+});
 
 describe("startAutosave", () => {
   it("saves a short while after an edit", async () => {
