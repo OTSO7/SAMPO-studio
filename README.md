@@ -1,7 +1,21 @@
-# Tauri + React + Typescript
+# SAMPO Studio
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+Story and dialogue boards for game teams. Plan a story as phases and cards, write dialogue,
+present it in Focus mode and export voice lines for recording.
 
-## Recommended IDE Setup
+Desktop app for Windows, built with Tauri 2, Rust, React and TypeScript.
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## Development
+
+```powershell
+pnpm install
+pnpm tauri dev
+pnpm check
+```
+
+## Copyright
+
+Copyright © 2026 Otto Saarimaa. All rights reserved.
+
+This repository is visible for reference only. No licence is granted to use, copy, modify or
+distribute the code or the application without written permission.
