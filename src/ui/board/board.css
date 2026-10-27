@@ -2556,3 +2556,74 @@ body.is-resizing-rows * {
   background: var(--swatch);
   box-shadow: 0 0 6px color-mix(in srgb, var(--swatch) 60%, transparent);
 }
+
+/* ---------- card menu and expanded cards ---------- */
+
+.card-menu {
+  position: fixed;
+  right: auto;
+  z-index: 70;
+  min-width: 190px;
+  transform-origin: top left;
+}
+
+.menu__item--danger:hover,
+.menu__item--danger:focus-visible {
+  color: var(--danger);
+}
+
+/* An expanded card shows its whole text and every line, not the clipped preview. */
+.card.is-expanded .card__text,
+.card.is-expanded .card__quote {
+  display: block;
+  -webkit-line-clamp: unset;
+}
+
+.card.is-expanded {
+  border-left-style: double;
+}
+
+/* The expand arrow: tucked into the card's bottom-right corner, only on cards that hide text. */
+.card__expand {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--bone-faint);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
+}
+
+.card__expand svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.card__expand:hover,
+.card__expand:focus-visible {
+  border-color: var(--hairline-strong);
+  background: var(--ink-overlay);
+  color: var(--bone);
+  outline: none;
+}
+
+.card__expand.is-expanded svg {
+  transform: rotate(180deg);
+}

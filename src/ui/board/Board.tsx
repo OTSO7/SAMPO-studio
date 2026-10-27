@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type MouseEvent,
   type PointerEvent,
 } from "react";
 
@@ -16,6 +17,7 @@ import {
   BEAT_STATUSES,
   deleteBeat,
   deletePhase,
+  duplicateBeat,
   findBeat,
   mergePhaseWithPrevious,
   moveBeat,
@@ -36,6 +38,7 @@ import { ThreadsView } from "@ui/threads/ThreadsView";
 import { EditableText } from "@ui/primitives/EditableText";
 import { useServices } from "@ui/services/use-services";
 import { BeatCard } from "./BeatCard";
+import { CardMenu } from "./CardMenu";
 import { ExportMenu } from "./ExportMenu";
 import { Inspector } from "./Inspector";
 import { insertCard, type InsertKind } from "./insert-card";
@@ -70,10 +73,8 @@ export function Board({ story }: { story: Story }) {
   const [focusOnOpen, setFocusOnOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showPacing, setShowPacing] = useState(() => readFlag("sampo.showPacing", true));
-  const [view, setView] = useState<View>(() => {
-    const saved = readText("sampo.view");
-    return saved === "lines" || saved === "threads" ? saved : "board";
-  });
+  // Every story opens on the board, whichever view the last one was left in.
+  const [view, setView] = useState<View>("board");
   const [zoom, setZoom] = useState(() => clampZoom(Number(readText("sampo.zoom") ?? "1")));
   const zoomRef = useRef(zoom);
   /** Cards in other states fade back, so a review pass sees only what it needs. */
@@ -81,7 +82,6 @@ export function Board({ story }: { story: Story }) {
 
   const changeView = useCallback((next: View) => {
     setView(next);
-    writeText("sampo.view", next);
   }, []);
 
   const changeZoom = useCallback((next: number) => {
@@ -249,6 +249,24 @@ export function Board({ story }: { story: Story }) {
     },
     [onPointerDown],
   );
+
+  /** Cards shown in full on the board; a view setting, so it is not saved in the story. */
+  const [expandedIds, setExpandedIds] = useState<ReadonlySet<BeatId>>(new Set());
+  const [cardMenu, setCardMenu] = useState<{ x: number; y: number; beatId: BeatId } | null>(null);
+  const openCardMenu = useCallback((event: MouseEvent<HTMLElement>, beat: Beat) => {
+    event.preventDefault();
+    setCardMenu({ x: event.clientX, y: event.clientY, beatId: beat.id });
+  }, []);
+  const closeCardMenu = useCallback(() => {
+    setCardMenu(null);
+  }, []);
+  const toggleExpanded = useCallback((beatId: BeatId) => {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (!next.delete(beatId)) next.add(beatId);
+      return next;
+    });
+  }, []);
 
   const rename = useCallback(
     (phase: Phase, title: string) => {
@@ -607,6 +625,9 @@ export function Board({ story }: { story: Story }) {
                   }}
                   onInsert={insert}
                   onCardPointerDown={cardPointerDown}
+                  expandedIds={expandedIds}
+                  onToggleExpand={toggleExpanded}
+                  onCardContextMenu={openCardMenu}
                 />
               ))}
               <button
@@ -650,6 +671,28 @@ export function Board({ story }: { story: Story }) {
           onClose={() => {
             setSelectedId(null);
           }}
+        />
+      )}
+
+      {cardMenu !== null && (
+        <CardMenu
+          x={cardMenu.x}
+          y={cardMenu.y}
+          expanded={expandedIds.has(cardMenu.beatId)}
+          onOpen={() => {
+            openCard(cardMenu.beatId);
+          }}
+          onToggleExpand={() => {
+            toggleExpanded(cardMenu.beatId);
+          }}
+          onDuplicate={() => {
+            edit((s) => duplicateBeat(s, cardMenu.beatId).story);
+          }}
+          onDelete={() => {
+            if (selectedId === cardMenu.beatId) setSelectedId(null);
+            edit((s) => deleteBeat(s, cardMenu.beatId));
+          }}
+          onClose={closeCardMenu}
         />
       )}
 

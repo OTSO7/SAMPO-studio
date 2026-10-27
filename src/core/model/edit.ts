@@ -66,7 +66,9 @@ export function updateBeat(story: Story, beatId: BeatId, patch: BeatPatch): Stor
   return mapBeats(story, (beat) => {
     if (beat.id !== beatId) return beat;
     const { label, intensity, status, ...rest } = beat;
-    const nextLabel = patch.label === undefined ? label : patch.label.trim() || undefined;
+    // Kept as typed: trimming on every keystroke would swallow the space between two words.
+    const nextLabel =
+      patch.label === undefined ? label : patch.label.trim() === "" ? undefined : patch.label;
     const nextIntensity =
       patch.intensity === undefined ? intensity : (patch.intensity ?? undefined);
     const nextStatus =
@@ -220,6 +222,39 @@ export function insertBeat(
       return { ...phase, beats: [...phase.beats.slice(0, at), created, ...phase.beats.slice(at)] };
     }),
     beatId: created.id,
+  };
+}
+
+/**
+ * Copies a card right after itself: same heading, type, status, threads and script, with new
+ * ids so the copy's lines get recording ids of their own.
+ */
+export function duplicateBeat(
+  story: Story,
+  beatId: BeatId,
+  ids: IdFactory = newId,
+): { story: Story; beatId: BeatId | null } {
+  const found = findBeat(story, beatId);
+  if (found === null) return { story, beatId: null };
+  const copy: Beat = {
+    ...found.beat,
+    id: ids.beat(),
+    blocks: found.beat.blocks.map((block) => ({ ...block, id: ids.block() })),
+  };
+  return {
+    story: mapPhases(story, (phase) =>
+      phase.id === found.phase.id
+        ? {
+            ...phase,
+            beats: [
+              ...phase.beats.slice(0, found.beatIndex + 1),
+              copy,
+              ...phase.beats.slice(found.beatIndex + 1),
+            ],
+          }
+        : phase,
+    ),
+    beatId: copy.id,
   };
 }
 

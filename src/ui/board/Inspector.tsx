@@ -2,6 +2,7 @@ import { useEffect, type PointerEvent as ReactPointerEvent } from "react";
 
 import {
   deleteBeat,
+  duplicateBeat,
   mergeBeatWithPrevious,
   splitPhaseAt,
   type BeatLocation,
@@ -132,6 +133,15 @@ export function Inspector({
             </button>
           </>
         )}
+        <button
+          type="button"
+          className="inspector__action"
+          onClick={() => {
+            edit((s) => duplicateBeat(s, beat.id).story);
+          }}
+        >
+          Duplicate
+        </button>
         <button
           type="button"
           className="inspector__action inspector__action--danger"

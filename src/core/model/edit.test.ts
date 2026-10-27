@@ -7,6 +7,7 @@ import {
   addPhase,
   deleteBeat,
   deletePhase,
+  duplicateBeat,
   ensureCharacter,
   findBeat,
   insertBeat,
@@ -101,6 +102,30 @@ describe("updateBeat", () => {
     const next = updateBeat(story, b1.id, { typeId: gameplay.id, label: "Minipeli", intensity: 4 });
     expect(findBeat(next, b1.id)?.beat).toEqual(
       expect.objectContaining({ typeId: gameplay.id, label: "Minipeli", intensity: 4 }),
+    );
+  });
+
+  it("duplicates a card right after itself with fresh ids", () => {
+    const labelled = updateBeat(story, b1.id, { label: "Arrival", status: "review" });
+    const { story: next, beatId } = duplicateBeat(labelled, b1.id, deterministicIds());
+    const copy = next.phases[0]?.beats[1];
+
+    expect(copy?.id).toBe(beatId);
+    expect(copy).toEqual(expect.objectContaining({ label: "Arrival", status: "review" }));
+    expect(copy?.blocks.map((block) => block.text)).toEqual(b1.blocks.map((block) => block.text));
+    const ids = new Set(
+      next.phases.flatMap((p) => p.beats.flatMap((b) => [b.id, ...b.blocks.map((k) => k.id)])),
+    );
+    expect(ids.size).toBe(
+      next.phases.flatMap((p) => p.beats.flatMap((b) => [b, ...b.blocks])).length,
+    );
+  });
+
+  it("keeps a heading exactly as typed, so a space can follow a word", () => {
+    const typing = updateBeat(story, b1.id, { label: "The " });
+    expect(findBeat(typing, b1.id)?.beat.label).toBe("The ");
+    expect(findBeat(updateBeat(typing, b1.id, { label: "  " }), b1.id)?.beat).not.toHaveProperty(
+      "label",
     );
   });
 

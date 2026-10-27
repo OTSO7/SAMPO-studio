@@ -1,7 +1,8 @@
-import { memo, type PointerEvent } from "react";
+import { memo, type MouseEvent, type PointerEvent } from "react";
 
 import type { Beat } from "@core/model";
 import { useServices } from "@ui/services/use-services";
+import { MAX_PREVIEW_LINES } from "./card-preview";
 import { STATUS_NAMES } from "./status";
 import type { StoryLookup } from "./story-lookup";
 
@@ -11,11 +12,12 @@ interface BeatCardProps {
   lookup: StoryLookup;
   selected?: boolean;
   hidden?: boolean;
+  /** Shows every line and the whole text instead of a preview. */
+  expanded?: boolean;
   onSelect?: (beat: Beat) => void;
   onPointerDown?: (event: PointerEvent<HTMLElement>, beat: Beat) => void;
+  onContextMenu?: (event: MouseEvent<HTMLElement>, beat: Beat) => void;
 }
-
-const MAX_PREVIEW_LINES = 3;
 
 /** A card on the board: number, first picture, heading, opening text and dialogue. */
 export const BeatCard = memo(function BeatCard({
@@ -24,8 +26,10 @@ export const BeatCard = memo(function BeatCard({
   lookup,
   selected = false,
   hidden = false,
+  expanded = false,
   onSelect,
   onPointerDown,
+  onContextMenu,
 }: BeatCardProps) {
   const type = lookup.typeById.get(beat.typeId);
   const lead = beat.blocks.find((block) => block.type === "action")?.text ?? "";
@@ -35,10 +39,16 @@ export const BeatCard = memo(function BeatCard({
   const sounds = beat.blocks.filter((block) => block.type === "audio");
   const takes = lines.filter((line) => line.take !== undefined).length;
   const { files } = useServices().deps;
-  // The default type is the quiet one; only other types announce themselves.
-  const typeName = type !== undefined && type.id !== lookup.defaultTypeId ? type.name : null;
+  // Every type is named: authors define them, so the first one means something too.
+  const typeName = type?.name ?? null;
+  const shownLines = expanded ? lines : lines.slice(0, MAX_PREVIEW_LINES);
 
-  const classes = ["card", selected && "is-selected", hidden && "is-hidden"]
+  const classes = [
+    "card",
+    selected && "is-selected",
+    hidden && "is-hidden",
+    expanded && "is-expanded",
+  ]
     .filter(Boolean)
     .join(" ");
 
@@ -52,6 +62,7 @@ export const BeatCard = memo(function BeatCard({
       aria-pressed={selected}
       onClick={() => onSelect?.(beat)}
       onPointerDown={(event) => onPointerDown?.(event, beat)}
+      onContextMenu={(event) => onContextMenu?.(event, beat)}
     >
       <span className="card__head">
         <span className="card__number">{number}</span>
@@ -99,7 +110,7 @@ export const BeatCard = memo(function BeatCard({
 
       {lines.length > 0 && (
         <span className="card__dialogue">
-          {lines.slice(0, MAX_PREVIEW_LINES).map((line) => {
+          {shownLines.map((line) => {
             const speaker = line.speaker === null ? undefined : lookup.entityById.get(line.speaker);
             return (
               <span key={line.id} className="card__line" data-swatch={speaker?.color ?? "slate"}>
@@ -108,8 +119,10 @@ export const BeatCard = memo(function BeatCard({
               </span>
             );
           })}
-          {lines.length > MAX_PREVIEW_LINES && (
-            <span className="card__more">+{lines.length - MAX_PREVIEW_LINES} more lines</span>
+          {lines.length > shownLines.length && (
+            <span className="card__more" title="Right-click the card to expand it">
+              +{lines.length - shownLines.length} more lines
+            </span>
           )}
         </span>
       )}

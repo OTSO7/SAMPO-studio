@@ -18,6 +18,7 @@ export {
   addPhase,
   deleteBeat,
   deletePhase,
+  duplicateBeat,
   ensureCharacter,
   ensureThread,
   findBeat,

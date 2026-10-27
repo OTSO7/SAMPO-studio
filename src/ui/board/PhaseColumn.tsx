@@ -1,8 +1,9 @@
-import { Fragment, memo, type PointerEvent } from "react";
+import { Fragment, memo, type MouseEvent, type PointerEvent } from "react";
 
 import type { Beat, BeatId, Phase } from "@core/model";
 import { EditableText } from "@ui/primitives/EditableText";
 import { BeatCard } from "./BeatCard";
+import { canExpand } from "./card-preview";
 import type { InsertKind } from "./insert-card";
 import type { StoryLookup } from "./story-lookup";
 import type { DragState, DropTarget } from "./use-card-drag";
@@ -22,6 +23,10 @@ interface PhaseColumnProps {
   onDelete: (phase: Phase) => void;
   onInsert: (phase: Phase, index: number, kind: InsertKind) => void;
   onCardPointerDown: (event: PointerEvent<HTMLElement>, beat: Beat, phase: Phase) => void;
+  /** Cards shown in full on the board. */
+  expandedIds: ReadonlySet<BeatId>;
+  onToggleExpand: (beatId: BeatId) => void;
+  onCardContextMenu: (event: MouseEvent<HTMLElement>, beat: Beat) => void;
 }
 
 export const PhaseColumn = memo(function PhaseColumn({
@@ -39,6 +44,9 @@ export const PhaseColumn = memo(function PhaseColumn({
   onDelete,
   onInsert,
   onCardPointerDown,
+  expandedIds,
+  onToggleExpand,
+  onCardContextMenu,
 }: PhaseColumnProps) {
   const dropIndex = dragging !== null && dropTarget?.phaseId === phase.id ? dropTarget.index : null;
   const draggedIndex =
@@ -132,11 +140,30 @@ export const PhaseColumn = memo(function PhaseColumn({
                   lookup={lookup}
                   selected={beat.id === selectedBeatId}
                   hidden={isDragged}
+                  expanded={expandedIds.has(beat.id)}
                   onSelect={onSelect}
                   onPointerDown={(event) => {
                     onCardPointerDown(event, beat, phase);
                   }}
+                  onContextMenu={onCardContextMenu}
                 />
+                {/* Beside the card button, not inside it: a button may not hold another. */}
+                {!isDragged && canExpand(beat) && (
+                  <button
+                    type="button"
+                    className={`card__expand ${expandedIds.has(beat.id) ? "is-expanded" : ""}`}
+                    aria-label={expandedIds.has(beat.id) ? "Collapse the card" : "Expand the card"}
+                    aria-expanded={expandedIds.has(beat.id)}
+                    title={expandedIds.has(beat.id) ? "Collapse" : "Show the whole card"}
+                    onClick={() => {
+                      onToggleExpand(beat.id);
+                    }}
+                  >
+                    <svg viewBox="0 0 10 10" aria-hidden="true">
+                      <path d="M2 3.5l3 3 3-3" />
+                    </svg>
+                  </button>
+                )}
               </li>
             </Fragment>
           );
