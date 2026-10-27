@@ -16,6 +16,8 @@ import { Titlebar } from "./Titlebar";
 import { useSaveConflict } from "./use-save-conflict";
 import { useShortcuts } from "./use-shortcuts";
 import { useUpdateCheck } from "./use-update-check";
+import { isNewVersion, markVersionSeen } from "./changelog";
+import { WhatsNew } from "./WhatsNew";
 
 import "./app-shell.css";
 
@@ -24,6 +26,8 @@ export function AppShell() {
   const story = useStore(deps.document, (state) => state.story);
   const [focusing, setFocusing] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  // The first start after an update opens on what changed.
+  const [showWhatsNew, setShowWhatsNew] = useState(isNewVersion);
   useShortcuts(deps);
   useSaveConflict(deps);
   useUpdateCheck(prompts, deps.notices);
@@ -76,6 +80,10 @@ export function AppShell() {
 
   const closeShortcuts = useCallback(() => {
     setShowShortcuts(false);
+  }, []);
+  const closeWhatsNew = useCallback(() => {
+    markVersionSeen();
+    setShowWhatsNew(false);
   }, []);
 
   // ? or F1 lists every shortcut.
@@ -146,10 +154,14 @@ export function AppShell() {
         onShowShortcuts={() => {
           setShowShortcuts(true);
         }}
+        onShowWhatsNew={() => {
+          setShowWhatsNew(true);
+        }}
       />
       <NoticeBar />
       <PromptDialog />
       {showShortcuts && <ShortcutsSheet onClose={closeShortcuts} />}
+      {showWhatsNew && <WhatsNew onClose={closeWhatsNew} />}
     </div>
   );
 }

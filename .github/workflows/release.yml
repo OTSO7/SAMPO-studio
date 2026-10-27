@@ -46,6 +46,28 @@ jobs:
 
       - run: pnpm check
 
+      # The release text is this version's section of CHANGELOG.md, the same notes the app shows.
+      - name: Release notes from the changelog
+        id: notes
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          notes="$(awk -v v="$version" '/^## /{on = ($2 == v); next} on' CHANGELOG.md)"
+          if [ -z "${notes//[[:space:]]/}" ]; then
+            echo "::error::CHANGELOG.md has no section for $version"
+            exit 1
+          fi
+          {
+            echo "body<<SAMPO_NOTES_END"
+            echo "$notes"
+            echo
+            echo "---"
+            echo
+            echo "**Install:** download the setup file below and run it. No administrator rights needed."
+            echo "Installed copies update themselves."
+            echo "SAMPO_NOTES_END"
+          } >> "$GITHUB_OUTPUT"
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -55,6 +77,6 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: SAMPO Studio ${{ github.ref_name }}
-          releaseBody: Download the setup file below and run it. No administrator rights needed.
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: true
           includeUpdaterJson: true

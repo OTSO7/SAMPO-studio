@@ -10,7 +10,13 @@ function fileLabel(state: DocumentState): string {
   return state.path.split(/[\\/]/u).pop() ?? state.path;
 }
 
-export function Statusbar({ onShowShortcuts }: { onShowShortcuts: () => void }) {
+export function Statusbar({
+  onShowShortcuts,
+  onShowWhatsNew,
+}: {
+  onShowShortcuts: () => void;
+  onShowWhatsNew: () => void;
+}) {
   const { document } = useServices().deps;
   const file = useStore(document, fileLabel);
   const status = useStore(document, (state) => state.saveStatus);
@@ -43,7 +49,14 @@ export function Statusbar({ onShowShortcuts }: { onShowShortcuts: () => void }) 
         <button type="button" className="shell__status-button" onClick={onShowShortcuts}>
           Shortcuts <kbd className="kbd">?</kbd>
         </button>
-        <span>v{__APP_VERSION__}</span>
+        <button
+          type="button"
+          className="shell__status-button"
+          title="What's new"
+          onClick={onShowWhatsNew}
+        >
+          v{__APP_VERSION__}
+        </button>
       </span>
     </footer>
   );
