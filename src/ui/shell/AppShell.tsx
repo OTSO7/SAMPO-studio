@@ -139,7 +139,8 @@ export function AppShell() {
         }
       />
       <main className={`shell__main ${story === null ? "" : "shell__main--board"}`}>
-        {story === null ? <StartScreen /> : <Board story={story} />}
+        {/* Keyed by story: opening another story starts its board fresh, on the Board view. */}
+        {story === null ? <StartScreen /> : <Board key={story.id} story={story} />}
       </main>
       <Statusbar
         onShowShortcuts={() => {

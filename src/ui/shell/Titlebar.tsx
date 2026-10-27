@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { closeStory } from "@app/commands";
-import { isDirty } from "@app/store";
+import { closeStory, save } from "@app/commands";
+import { isDirty, showNotice } from "@app/store";
+import { checkForUpdate, type AvailableUpdate } from "@app/updates";
 import { closeWindow, minimizeWindow, toggleMaximized, watchMaximized } from "@app/window";
 import { useStore } from "@ui/hooks/use-store";
 import { Kbd } from "@ui/primitives/Kbd";
@@ -17,10 +18,13 @@ export function Titlebar({ onFocus }: { onFocus: (() => void) | null }) {
     // The bar itself moves the window; double-clicking it maximizes, as in any Windows app.
     <header className="shell__titlebar" data-tauri-drag-region>
       {title === null ? (
-        <div className="shell__wordmark" aria-label="SAMPO Studio">
-          <span className="shell__wordmark-mark" aria-hidden="true" />
-          SAMPO
-        </div>
+        <>
+          <div className="shell__wordmark" aria-label="SAMPO Studio">
+            <span className="shell__wordmark-mark" aria-hidden="true" />
+            SAMPO
+          </div>
+          <UpdateButton />
+        </>
       ) : (
         <button
           type="button"
@@ -39,6 +43,18 @@ export function Titlebar({ onFocus }: { onFocus: (() => void) | null }) {
           {dirty && <span className="shell__dirty" aria-label="Unsaved changes" />}
         </div>
       )}
+      {title !== null && (
+        // For everyone who does not use Ctrl S; it lights up while there is something to save.
+        <button
+          type="button"
+          className={`shell__save-button ${dirty ? "is-dirty" : ""}`}
+          title="Save the story"
+          onClick={() => void save(deps)}
+        >
+          Save
+          <Kbd keys={["Ctrl", "S"]} />
+        </button>
+      )}
       {onFocus !== null && (
         <button type="button" className="shell__focus" onClick={onFocus}>
           <span className="shell__focus-icon" aria-hidden="true" />
@@ -48,6 +64,77 @@ export function Titlebar({ onFocus }: { onFocus: (() => void) | null }) {
       )}
       <WindowButtons />
     </header>
+  );
+}
+
+type UpdateState =
+  | { readonly kind: "checking" }
+  | { readonly kind: "current" }
+  | { readonly kind: "failed" }
+  | { readonly kind: "available"; readonly update: AvailableUpdate }
+  | { readonly kind: "installing" };
+
+/**
+ * Says whether a newer SAMPO is out, checked as the start screen opens. Clicking installs an
+ * update that is waiting, or checks again.
+ */
+function UpdateButton() {
+  const { notices } = useServices().deps;
+  const [state, setState] = useState<UpdateState>({ kind: "checking" });
+
+  const check = useCallback(() => {
+    checkForUpdate().then(
+      (update) => {
+        setState(update === null ? { kind: "current" } : { kind: "available", update });
+      },
+      () => {
+        setState({ kind: "failed" });
+      },
+    );
+  }, []);
+  const run = () => {
+    setState({ kind: "checking" });
+    check();
+  };
+
+  // The state starts as "checking", so opening the start screen only has to ask.
+  useEffect(check, [check]);
+
+  const label = {
+    checking: "Checking for updates…",
+    current: "Up to date",
+    failed: "Could not check for updates",
+    installing: "Installing…",
+    available: state.kind === "available" ? `Update ${state.update.version} available` : "",
+  }[state.kind];
+
+  return (
+    <button
+      type="button"
+      className="shell__update"
+      data-state={state.kind}
+      disabled={state.kind === "checking" || state.kind === "installing"}
+      title={state.kind === "available" ? "Install and restart" : "Check for updates"}
+      onClick={() => {
+        if (state.kind !== "available") {
+          run();
+          return;
+        }
+        const { update } = state;
+        setState({ kind: "installing" });
+        update.install().catch((error: unknown) => {
+          setState({ kind: "available", update });
+          showNotice(notices, {
+            tone: "error",
+            title: "The update could not be installed.",
+            details: [String(error)],
+          });
+        });
+      }}
+    >
+      <span className="shell__update-dot" aria-hidden="true" />
+      {label}
+    </button>
   );
 }
 

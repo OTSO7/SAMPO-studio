@@ -14,17 +14,25 @@ export interface AvailableUpdate {
  */
 export async function findUpdate(): Promise<AvailableUpdate | null> {
   try {
-    const update = await check();
-    if (update === null) return null;
-    return {
-      version: update.version,
-      install: async () => {
-        await update.downloadAndInstall();
-        await relaunch();
-      },
-    };
+    return await checkForUpdate();
   } catch (error) {
     console.warn("Update check failed", error);
     return null;
   }
+}
+
+/**
+ * The same check for when the author asks: a failure is reported, so being offline is never
+ * mistaken for being up to date.
+ */
+export async function checkForUpdate(): Promise<AvailableUpdate | null> {
+  const update = await check();
+  if (update === null) return null;
+  return {
+    version: update.version,
+    install: async () => {
+      await update.downloadAndInstall();
+      await relaunch();
+    },
+  };
 }
