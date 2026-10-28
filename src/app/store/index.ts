@@ -15,7 +15,9 @@ export {
   markSaveCancelled,
   markSaved,
   markSaveFailed,
+  markKept,
   markSaving,
+  replaceStory,
   redo,
   undo,
 } from "./document-store";

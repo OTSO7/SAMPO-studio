@@ -5,6 +5,7 @@ import { isDirty, showNotice } from "@app/store";
 import { checkForUpdate, type AvailableUpdate } from "@app/updates";
 import { closeWindow, minimizeWindow, toggleMaximized, watchMaximized } from "@app/window";
 import { useStore } from "@ui/hooks/use-store";
+import { LiveControls } from "@ui/live/LiveControls";
 import { Kbd } from "@ui/primitives/Kbd";
 import { useServices } from "@ui/services/use-services";
 
@@ -43,6 +44,7 @@ export function Titlebar({ onFocus }: { onFocus: (() => void) | null }) {
           {dirty && <span className="shell__dirty" aria-label="Unsaved changes" />}
         </div>
       )}
+      <LiveControls />
       {title !== null && (
         // For everyone who does not use Ctrl S; it lights up while there is something to save.
         <button

@@ -125,6 +125,31 @@ export function redo(store: DocumentStore): void {
   });
 }
 
+/**
+ * Takes a version of the story made elsewhere, e.g. by a friend in a live session. It counts
+ * as an edit, so it gets saved, but not as one of this person's: undo history starts over.
+ */
+export function replaceStory(store: DocumentStore, story: Story): void {
+  store.setState((state) => ({
+    story,
+    revision: state.revision + 1,
+    past: [],
+    future: [],
+    editGroup: null,
+  }));
+}
+
+/**
+ * Records that `revision` is kept safe without a file, e.g. in a shared project's copy on
+ * this computer, so closing the story asks nothing.
+ */
+export function markKept(store: DocumentStore, revision: number, at: Date): void {
+  store.setState((state) => ({
+    savedRevision: Math.max(state.savedRevision, revision),
+    saveStatus: { kind: "saved", at },
+  }));
+}
+
 export function markSaving(store: DocumentStore): void {
   store.setState({ saveStatus: { kind: "saving" } });
 }

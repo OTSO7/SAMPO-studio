@@ -27,3 +27,7 @@ dist-ssr
 # even if one is accidentally saved inside the project folder.
 *.sampo
 *.sampo.tmp
+
+# Cloud relay: local wrangler state and secrets
+cloud/.wrangler
+cloud/.dev.vars

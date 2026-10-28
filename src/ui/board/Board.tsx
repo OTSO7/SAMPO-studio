@@ -34,6 +34,8 @@ import {
 import type { SearchResult } from "@core/search";
 import { usePanelWidth } from "@ui/hooks/use-panel-width";
 import { LinesView } from "@ui/lines/LinesView";
+import { HistorySheet } from "@ui/live/HistorySheet";
+import { LivePresence } from "@ui/live/LivePresence";
 import { ThreadsView } from "@ui/threads/ThreadsView";
 import { EditableText } from "@ui/primitives/EditableText";
 import { useServices } from "@ui/services/use-services";
@@ -72,6 +74,7 @@ export function Board({ story }: { story: Story }) {
   const [selectedId, setSelectedId] = useState<BeatId | null>(null);
   const [focusOnOpen, setFocusOnOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [showPacing, setShowPacing] = useState(() => readFlag("sampo.showPacing", true));
   // Every story opens on the board, whichever view the last one was left in.
   const [view, setView] = useState<View>("board");
@@ -429,6 +432,15 @@ export function Board({ story }: { story: Story }) {
       data-status-filter={statusFilter ?? undefined}
       style={{ "--inspector-width": `${panel.width}px` } as CSSProperties}
     >
+      <LivePresence selectedId={selectedId} />
+      {historyOpen && (
+        <HistorySheet
+          storyId={story.id}
+          onClose={() => {
+            setHistoryOpen(false);
+          }}
+        />
+      )}
       <div className="board__main">
         <header className="board__header">
           <div className="board__heading">
@@ -477,6 +489,16 @@ export function Board({ story }: { story: Story }) {
                 }}
               >
                 Card types &amp; cast
+              </button>
+              <button
+                type="button"
+                className="board__history"
+                title="Earlier versions, kept automatically"
+                onClick={() => {
+                  setHistoryOpen(true);
+                }}
+              >
+                History
               </button>
               <ExportMenu />
             </div>

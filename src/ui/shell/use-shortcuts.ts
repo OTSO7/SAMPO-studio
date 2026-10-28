@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { importScript, newStory, openStory, save, type AppDeps } from "@app/commands";
+import { liveUndo } from "@app/live/project";
 import { redo, undo } from "@app/store";
 
 function isEditable(target: EventTarget | null): boolean {
@@ -24,7 +25,10 @@ export function useShortcuts(deps: AppDeps): void {
 
       if ((key === "z" || key === "y") && !isEditable(event.target)) {
         event.preventDefault();
-        if (key === "y" || event.shiftKey) redo(deps.document);
+        const again = key === "y" || event.shiftKey;
+        // In a live session only this person's own edits are undone, never a friend's.
+        if (liveUndo(again)) return;
+        if (again) redo(deps.document);
         else undo(deps.document);
         return;
       }

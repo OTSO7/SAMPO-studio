@@ -48,21 +48,34 @@ let mediaFolder: string | null = null;
 /** Outside the desktop app (the dev server in a browser) media lives in memory instead. */
 const browserMedia = new Map<string, string>();
 
+/** The dev server in a plain browser has no file system; say so instead of failing oddly. */
+function desktopOnly(): void {
+  if (!isTauri()) {
+    throw new FileError(
+      "io",
+      "Files can only be opened and saved in the SAMPO Studio app, not in a browser tab.",
+    );
+  }
+}
+
 async function ensureMediaFolder(): Promise<void> {
   mediaFolder ??= await invoke<string>("media_folder");
 }
 
 export const tauriFileHost: FileHost = {
   async pickOpenPath() {
+    desktopOnly();
     const path = await open({ multiple: false, directory: false, filters: FILTERS });
     return typeof path === "string" ? path : null;
   },
 
   async pickSavePath(suggestedName) {
+    desktopOnly();
     return save({ defaultPath: suggestedName, filters: FILTERS });
   },
 
   async readText(path) {
+    desktopOnly();
     try {
       await ensureMediaFolder();
       return await invoke<string>("read_story_file", { path });
@@ -72,6 +85,7 @@ export const tauriFileHost: FileHost = {
   },
 
   async writeText(path, contents, media) {
+    desktopOnly();
     try {
       await invoke("write_story_file", { path, contents, media });
     } catch (error) {
@@ -111,6 +125,7 @@ export const tauriFileHost: FileHost = {
   },
 
   async pickExportPath(suggestedName, format) {
+    desktopOnly();
     return save({ defaultPath: suggestedName, filters: EXPORT_FILTERS[format] });
   },
 

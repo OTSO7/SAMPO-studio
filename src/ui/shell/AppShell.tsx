@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { watchBackups } from "@app/backups";
 import { confirmWindowClose, openLaunchFile } from "@app/commands";
+import { watchProjects } from "@app/live/project";
 import { guardWindowClose, toggleFullscreen } from "@app/window";
 
 import { Board } from "@ui/board/Board";
@@ -31,6 +33,10 @@ export function AppShell() {
   useShortcuts(deps);
   useSaveConflict(deps);
   useUpdateCheck(prompts, deps.notices);
+
+  // Shared stories open as their project; every story gets its version history.
+  useEffect(() => watchProjects(deps), [deps]);
+  useEffect(() => watchBackups(deps.document), [deps]);
 
   // F11 toggles full screen, like a browser or a media player.
   useEffect(() => {

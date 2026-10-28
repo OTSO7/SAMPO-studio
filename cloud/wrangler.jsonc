@@ -1,0 +1,19 @@
+// SAMPO Studio live sessions: one Worker and a Durable Object per session that relays
+// end-to-end encrypted edits. Runs on Cloudflare's free plan with no payment method, so it
+// can never cost anything. Setup: ../docs/live-sessions.md
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sampo-cloud",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }],
+  },
+  // SQLite-backed Durable Objects are the kind the free plan includes.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+  // Per minute and address. Workers rate limiting is free.
+  "ratelimits": [
+    { "name": "CONNECT_LIMIT", "namespace_id": "1003", "simple": { "limit": 30, "period": 60 } },
+  ],
+}

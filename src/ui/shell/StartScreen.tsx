@@ -2,6 +2,8 @@ import { useState } from "react";
 
 import { importScript, newStory, openStory, openStoryAt } from "@app/commands";
 import { showNotice } from "@app/store";
+import { JoinDialog } from "@ui/live/JoinDialog";
+import { SharedProjects } from "@ui/live/SharedProjects";
 import { Kbd } from "@ui/primitives/Kbd";
 import { useServices } from "@ui/services/use-services";
 
@@ -15,6 +17,7 @@ export function StartScreen() {
   const { deps } = useServices();
   // Read once per visit to the start screen; opening a file leaves this screen anyway.
   const [recent] = useState(() => deps.recent?.list() ?? []);
+  const [joining, setJoining] = useState(false);
 
   const pasteFromClipboard = async () => {
     try {
@@ -44,6 +47,14 @@ export function StartScreen() {
       hint: "Turn a document into phases and cards",
       keys: ["Ctrl", "V"],
       run: pasteFromClipboard,
+    },
+    {
+      label: "Join a shared project",
+      hint: "With the invite code a friend sent",
+      keys: [],
+      run: () => {
+        setJoining(true);
+      },
     },
   ];
 
@@ -92,6 +103,14 @@ export function StartScreen() {
             })}
           </ul>
         </>
+      )}
+      <SharedProjects />
+      {joining && (
+        <JoinDialog
+          onClose={() => {
+            setJoining(false);
+          }}
+        />
       )}
     </section>
   );

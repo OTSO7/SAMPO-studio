@@ -1,3 +1,4 @@
+mod backups;
 mod commands;
 mod storage;
 
@@ -23,7 +24,10 @@ pub fn run() {
             commands::put_media,
             commands::media_folder,
             commands::write_export_file,
-            commands::launch_file
+            commands::launch_file,
+            backups::backup_folder,
+            backups::list_backups,
+            backups::delete_backup
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

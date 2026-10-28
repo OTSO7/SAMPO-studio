@@ -1,0 +1,454 @@
+/* ---------- live session: the title bar button and its panel ---------- */
+
+.live {
+  position: relative;
+  margin-left: auto;
+}
+
+.live__button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 28px;
+  margin-left: auto;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: none;
+  font-size: var(--text-sm);
+  color: var(--bone-muted);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.live__button:hover {
+  border-color: var(--bone-faint);
+  color: var(--bone);
+}
+
+/* The title bar's own buttons follow with a small gap instead of pushing apart. */
+.live__button + .shell__save-button,
+.live + .shell__save-button {
+  margin-left: var(--space-2);
+}
+
+.live > .live__button {
+  margin-left: 0;
+}
+
+.live__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--bone-faint);
+}
+
+.live__button.is-on {
+  border-color: var(--ochre);
+  color: var(--bone);
+}
+
+.live__button.is-on .live__dot,
+.live__waiting .live__dot {
+  background: var(--ochre);
+  animation: live-pulse 1.6s var(--ease-out) infinite;
+}
+
+@keyframes live-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.live__count {
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--ochre);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  color: var(--ink);
+}
+
+.live__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 70;
+  display: grid;
+  gap: var(--space-4);
+  width: 340px;
+  padding: var(--space-4);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: var(--ink-overlay);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 50%);
+}
+
+.live__section {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.live__section h3 {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ochre-text);
+}
+
+.live__note {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--bone-faint);
+}
+
+.live__code {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.live__code code {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--bone-muted);
+  user-select: all;
+}
+
+.live__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--bone);
+}
+
+.live__row > span:first-child {
+  flex: 1;
+}
+
+.live__person {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.live__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.live__swatch.is-you {
+  background: var(--ochre);
+}
+
+.live__action {
+  height: 26px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: none;
+  font-size: var(--text-xs);
+  color: var(--bone-muted);
+  cursor: pointer;
+}
+
+.live__action:hover {
+  color: var(--bone);
+}
+
+.live__action.is-primary {
+  border-color: var(--ochre);
+  background: var(--ochre-wash);
+  color: var(--bone);
+}
+
+.live__leave {
+  justify-self: start;
+}
+
+/* ---------- start and join dialogs ---------- */
+
+.live-sheet {
+  width: min(440px, calc(100% - 2 * var(--space-6)));
+}
+
+.live__form {
+  gap: var(--space-4);
+}
+
+.live__field {
+  display: grid;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--bone-faint);
+}
+
+.live__field input,
+.live__field textarea {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: var(--ink-raised);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--bone);
+  resize: none;
+}
+
+.live__field textarea {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.live__field input:focus,
+.live__field textarea:focus {
+  border-color: var(--ochre);
+  outline: none;
+}
+
+.live__submit {
+  height: 34px;
+  font-size: var(--text-sm);
+}
+
+.live__error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--danger);
+}
+
+.live__waiting {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--bone);
+}
+
+/* ---------- presence: what someone else just changed lights up in their colour ---------- */
+
+@keyframes live-flash-a {
+  from {
+    background-color: color-mix(in srgb, var(--live-flash) 28%, transparent);
+  }
+}
+
+@keyframes live-flash-b {
+  from {
+    background-color: color-mix(in srgb, var(--live-flash) 28%, transparent);
+  }
+}
+
+/* ---------- shared project panel ---------- */
+
+.live__button.is-offline .live__dot {
+  background: var(--bone-faint);
+  animation: none;
+}
+
+.live__status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--bone-muted);
+}
+
+.live__state {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.live__state.is-online {
+  background: var(--ochre);
+}
+
+.live__state.is-offline {
+  background: var(--bone-faint);
+}
+
+.live__presence {
+  margin-left: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--bone-faint);
+}
+
+.live__points {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-4);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--bone-muted);
+}
+
+/* ---------- start screen and history ---------- */
+
+.shared__badge {
+  margin-left: var(--space-2);
+  padding: 0 6px;
+  border: 1px solid var(--ochre);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  vertical-align: middle;
+  color: var(--ochre-text);
+}
+
+.history {
+  display: grid;
+  gap: var(--space-1);
+  max-height: 50vh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.history__when {
+  display: grid;
+  font-size: var(--text-sm);
+}
+
+.history__when .live__presence {
+  margin-left: 0;
+}
+
+.board__history {
+  height: 28px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: none;
+  font-size: var(--text-sm);
+  color: var(--bone-muted);
+  cursor: pointer;
+}
+
+.board__history:hover {
+  color: var(--bone);
+}
+
+.live__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--bone-muted);
+  cursor: pointer;
+}
+
+.live__toggle input {
+  accent-color: var(--ochre);
+}
+
+.live__warning {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  color: var(--danger);
+}
+
+.live__meter {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--ink);
+}
+
+.live__meter span {
+  display: block;
+  height: 100%;
+  background: var(--ochre);
+}
+
+.live__usage {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.live__usage dt {
+  font-size: var(--text-xs);
+  color: var(--bone-faint);
+}
+
+.live__usage dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--bone);
+}
+
+.shared__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.shared__item .start__file {
+  flex: 1;
+  min-width: 0;
+}
+
+.shared__more {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  font-size: var(--text-md);
+  color: var(--bone-faint);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.shared__item:hover .shared__more,
+.shared__more:focus-visible,
+.shared__more[aria-expanded="true"] {
+  opacity: 1;
+}
+
+.shared__more:hover {
+  background: var(--ink-raised);
+  color: var(--bone);
+}
+
+.shared__menu.menu__list {
+  top: calc(100% - 4px);
+  right: 0;
+  z-index: 30;
+  min-width: 240px;
+}

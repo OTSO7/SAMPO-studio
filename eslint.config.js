@@ -6,7 +6,8 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "src-tauri", "coverage"] },
+  // cloud/ is its own package with its own tsconfig and Worker types.
+  { ignores: ["dist", "src-tauri", "coverage", "cloud"] },
   {
     files: ["**/*.{ts,tsx}"],
     extends: [js.configs.recommended, ...tseslint.configs.strict, ...tseslint.configs.stylistic],

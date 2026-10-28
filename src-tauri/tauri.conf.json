@@ -25,7 +25,19 @@
       }
     ],
     "security": {
-      "csp": null,
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self'",
+        "style-src": "'self' 'unsafe-inline'",
+        "font-src": "'self' data:",
+        "img-src": "'self' asset: http://asset.localhost blob: data:",
+        "media-src": "'self' asset: http://asset.localhost blob: data:",
+        "connect-src": "'self' ipc: http://ipc.localhost asset: http://asset.localhost blob: data: wss://sampo-cloud.sampo-cloud.workers.dev ws://127.0.0.1:8787",
+        "object-src": "'none'",
+        "base-uri": "'none'",
+        "form-action": "'none'",
+        "frame-ancestors": "'none'"
+      },
       "assetProtocol": {
         "enable": true,
         "scope": ["$APPCACHE/media/**"]

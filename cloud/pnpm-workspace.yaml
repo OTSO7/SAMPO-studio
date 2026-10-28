@@ -1,0 +1,4 @@
+# esbuild and workerd fetch their native binaries when installed; wrangler needs both.
+allowBuilds:
+  esbuild: true
+  workerd: true

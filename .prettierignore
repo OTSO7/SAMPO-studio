@@ -4,3 +4,6 @@ node_modules
 src-tauri/target
 src-tauri/gen
 pnpm-lock.yaml
+
+cloud/node_modules
+cloud/.wrangler

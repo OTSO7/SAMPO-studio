@@ -1,3 +1,4 @@
+import { live } from "@app/live/project";
 import { isDirty, type DocumentState } from "@app/store";
 import { useStore } from "@ui/hooks/use-store";
 import { useServices } from "@ui/services/use-services";
@@ -21,11 +22,23 @@ export function Statusbar({
   const file = useStore(document, fileLabel);
   const status = useStore(document, (state) => state.saveStatus);
   const dirty = useStore(document, isDirty);
+  const shared = useStore(live, (s) =>
+    s.state.kind === "open"
+      ? s.state.connection === "offline"
+        ? "Offline · kept on this computer"
+        : s.state.unsent > 0
+          ? "Syncing…"
+          : "In sync"
+      : null,
+  );
+  const path = useStore(document, (state) => state.path);
 
   let saveLabel: string | null = null;
   if (status.kind === "saving") saveLabel = "Saving…";
   else if (status.kind === "failed") saveLabel = "Save failed";
   else if (status.kind === "conflict") saveLabel = "Changed on disk";
+  // A shared project without a file is kept by the project itself, not by saving.
+  else if (shared !== null && path === null) saveLabel = shared;
   else if (dirty) saveLabel = "Edited";
   else if (status.kind === "saved") saveLabel = `Saved ${timeFormat.format(status.at)}`;
   const error = status.kind === "failed" || status.kind === "conflict";
@@ -33,7 +46,7 @@ export function Statusbar({
 
   return (
     <footer className="shell__statusbar">
-      <span>{file}</span>
+      <span>{shared !== null && path === null ? "Shared project" : file}</span>
       <span className="shell__status-right">
         {saveLabel !== null && (
           // Keyed by the label, so every save visibly lands instead of silently changing text.

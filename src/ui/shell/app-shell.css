@@ -87,14 +87,16 @@
   transform: rotate(45deg);
 }
 
+/* Fills the space between the wordmark and the buttons, so a long title shortens instead of
+   running under them. */
 .shell__title {
-  position: absolute;
-  left: 50%;
   display: flex;
+  flex: 1;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
-  max-width: 50%;
-  transform: translateX(-50%);
+  min-width: 0;
+  padding: 0 var(--space-4);
   overflow: hidden;
   font-size: var(--text-sm);
   color: var(--bone-muted);
