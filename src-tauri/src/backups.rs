@@ -23,7 +23,9 @@ fn root(app: &AppHandle) -> Result<PathBuf, CommandError> {
 fn story_folder(app: &AppHandle, story_id: &str) -> Result<PathBuf, CommandError> {
     let valid = !story_id.is_empty()
         && story_id.len() <= 64
-        && story_id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+        && story_id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
     if !valid {
         return Err(CommandError::new("bad_path", "not a story id"));
     }
@@ -59,7 +61,12 @@ pub fn list_backups(app: AppHandle, story_id: String) -> Result<Vec<Backup>, Com
         .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "sampo"))
         .filter_map(|entry| {
             let meta = entry.metadata().ok()?;
-            let modified = meta.modified().ok()?.duration_since(UNIX_EPOCH).ok()?.as_millis();
+            let modified = meta
+                .modified()
+                .ok()?
+                .duration_since(UNIX_EPOCH)
+                .ok()?
+                .as_millis();
             Some(Backup {
                 path: entry.path(),
                 name: entry.file_name().to_string_lossy().into_owned(),
