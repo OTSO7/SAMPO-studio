@@ -3,6 +3,29 @@
 What is new in each version of SAMPO Studio. The app shows the latest entries after it
 updates; click the version number in the bottom corner to read them again.
 
+## 0.5.0 — 2026-10-28
+
+Edit a story together with friends.
+
+### Added
+
+- Shared projects. Share an open story, send the invite code to a friend and let them in once;
+  after that the project is on both start screens, marked with its owner.
+- Real-time editing together: edits show as they happen, the card someone has open and the line
+  they are typing in are marked with their colour and name, and what they just changed lights up.
+- Work on your own too: a shared project opens and saves without a connection or the others,
+  and catches up when you are back. Ctrl Z undoes only your own edits.
+- End-to-end encryption: the cloud in between only passes on scrambled data and cannot read the
+  story, names or pictures. Pictures and sounds stay on your computers.
+- Version history: complete copies of every story are kept automatically. History in the board
+  header opens any of them as a copy.
+- The owner can see members, remove them, close the project to new people, and delete it; a
+  member can leave. Both from the Shared panel or the start screen's ⋯ menu.
+
+### Changed
+
+- Saving in a browser tab now says that files need the app, instead of a cryptic error.
+
 ## 0.4.5 — 2026-10-28
 
 Fixes and improvements from beta feedback.
