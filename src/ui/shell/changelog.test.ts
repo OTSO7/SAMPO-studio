@@ -74,10 +74,10 @@ describe("parseChangelog", () => {
     expect(highlightsOf(old).trimmed).toBe(false);
   });
 
-  it("gives the latest release highlights for the app to show", () => {
-    const latest = parseChangelog(changelog)[0];
-    if (latest === undefined) throw new Error("no release");
-    expect(highlightsOf(latest).trimmed).toBe(true);
+  it("shows the big 0.6.0 release by its highlights; small releases show whole", () => {
+    const releases = parseChangelog(changelog).map(highlightsOf);
+    expect(releases.find((release) => release.version === "0.6.0")?.trimmed).toBe(true);
+    expect(releases.find((release) => release.version === "0.6.1")?.trimmed).toBe(false);
   });
 
   // Fails a release whose changelog was not written.

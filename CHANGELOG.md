@@ -3,6 +3,14 @@
 What is new in each version of SAMPO Studio. The app shows the latest entries after it
 updates; click the version number in the bottom corner to read them again.
 
+## 0.6.1 — 2026-10-29
+
+A small update: the notes about what changed in 0.6.0 are now easier to read.
+
+### Changed
+
+- Clearer, simpler update notes in this window and on the download page.
+
 ## 0.6.0 — 2026-10-29
 
 A big update for playing music live, with sound effects, smoother music and much faster saving.
