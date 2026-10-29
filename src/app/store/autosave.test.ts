@@ -166,3 +166,24 @@ describe("startAutosave", () => {
     expect(timers.scheduled).toEqual([]);
   });
 });
+
+describe("holding autosave", () => {
+  it("waits while held and saves once released", async () => {
+    const host = new ControlledHost();
+    const timers = new ManualTimers();
+    const store = createDocumentStore();
+    loadDocument(store, story, "D:/Routa.sampo");
+    let held = true;
+    startAutosave(store, storyFilesFor(host), { delayMs: 2000, timers, holdWhile: () => held });
+
+    editStory(store, rename("Keikka"));
+    timers.fireAll();
+    await settle();
+    expect(host.writes).toHaveLength(0);
+
+    held = false;
+    timers.fireAll();
+    await settle();
+    expect(host.writes).toHaveLength(1);
+  });
+});

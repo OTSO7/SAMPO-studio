@@ -19,13 +19,16 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::read_story_file,
+            commands::missing_media,
             commands::write_story_file,
             commands::story_file_modified,
             commands::put_media,
             commands::media_folder,
             commands::write_export_file,
             commands::launch_file,
-            backups::backup_folder,
+            backups::write_backup,
+            backups::read_backup,
+            backups::prune_backup_media,
             backups::list_backups,
             backups::delete_backup
         ])

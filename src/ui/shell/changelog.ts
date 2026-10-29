@@ -49,6 +49,21 @@ export function parseChangelog(markdown: string): Release[] {
   return releases;
 }
 
+/**
+ * A release as the app shows it: its opening line and its `### Highlights`, when it has them.
+ * `trimmed` says the rest is left to the releases page.
+ */
+export function highlightsOf(release: Release): Release & { trimmed: boolean } {
+  const start = release.blocks.findIndex(
+    (block) => block.kind === "heading" && block.text === "Highlights",
+  );
+  if (start === -1) return { ...release, trimmed: false };
+  const intro = release.blocks.slice(0, start).filter((block) => block.kind === "text");
+  const highlights = release.blocks[start + 1];
+  const blocks = highlights?.kind === "list" ? [...intro, highlights] : intro;
+  return { ...release, blocks, trimmed: true };
+}
+
 const SEEN_KEY = "sampo.whatsNewSeen";
 
 /** True until the notes for this version have been seen once. */

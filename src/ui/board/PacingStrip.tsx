@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 import { updateBeat, type BeatId, type Intensity, type Story } from "@core/model";
-import { INTENSITY_NAMES } from "./intensity";
+import { tensionLabel } from "./intensity";
 
 interface PacingStripProps {
   story: Story;
@@ -173,7 +173,7 @@ export function PacingStrip({ story, selectedBeatId, edit, onSelect }: PacingStr
               }}
             >
               <title>
-                {point.label} — {set ? INTENSITY_NAMES[point.intensity ?? 0] : "No tension set"}
+                {point.label} — {set ? tensionLabel(point.intensity ?? 0) : "No tension set"}
               </title>
               <rect
                 className="pacing__hit"

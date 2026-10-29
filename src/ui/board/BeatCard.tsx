@@ -1,6 +1,8 @@
-import { memo, type MouseEvent, type PointerEvent } from "react";
+import { memo, useLayoutEffect, useRef, type MouseEvent, type PointerEvent } from "react";
 
+import { mediaArrivals } from "@app/live/project";
 import type { Beat } from "@core/model";
+import { useStore } from "@ui/hooks/use-store";
 import { useServices } from "@ui/services/use-services";
 import { MAX_PREVIEW_LINES } from "./card-preview";
 import { STATUS_NAMES } from "./status";
@@ -11,12 +13,17 @@ interface BeatCardProps {
   number: string;
   lookup: StoryLookup;
   selected?: boolean;
+  /** One of several cards picked with Ctrl or Shift. */
+  picked?: boolean;
   hidden?: boolean;
   /** Shows every line and the whole text instead of a preview. */
   expanded?: boolean;
-  onSelect?: (beat: Beat) => void;
+  /** `add` is true for a Ctrl or Shift click, which picks the card alongside others. */
+  onSelect?: (beat: Beat, add: boolean) => void;
   onPointerDown?: (event: PointerEvent<HTMLElement>, beat: Beat) => void;
   onContextMenu?: (event: MouseEvent<HTMLElement>, beat: Beat) => void;
+  /** Told whether the collapsed card cuts any text off, measured as it is drawn. */
+  onClipped?: (beatId: Beat["id"], clipped: boolean) => void;
 }
 
 /** A card on the board: number, first picture, heading, opening text and dialogue. */
@@ -25,20 +32,41 @@ export const BeatCard = memo(function BeatCard({
   number,
   lookup,
   selected = false,
+  picked = false,
   hidden = false,
   expanded = false,
   onSelect,
   onPointerDown,
   onContextMenu,
+  onClipped,
 }: BeatCardProps) {
+  const ref = useRef<HTMLButtonElement | null>(null);
+  // Measured, not guessed: line breaks, long words and the zoom all change what fits.
+  useLayoutEffect(() => {
+    const card = ref.current;
+    if (card === null || onClipped === undefined || expanded) return undefined;
+    const check = () => {
+      const clamped = card.querySelectorAll<HTMLElement>(".card__text, .card__quote, .card__label");
+      const cut = [...clamped].some((el) => el.scrollHeight > el.clientHeight + 1);
+      onClipped(beat.id, cut || card.querySelector(".card__more") !== null);
+    };
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(card);
+    return () => {
+      observer.disconnect();
+    };
+  }, [beat, expanded, onClipped]);
   const type = lookup.typeById.get(beat.typeId);
   const lead = beat.blocks.find((block) => block.type === "action")?.text ?? "";
   const lines = beat.blocks.filter((block) => block.type === "line");
   const notes = beat.blocks.filter((block) => block.type === "note").length;
   const cover = beat.blocks.find((block) => block.type === "image");
-  const sounds = beat.blocks.filter((block) => block.type === "audio");
+  const sounds = beat.blocks.filter((block) => block.type === "audio" && block.role !== "sfx");
+  const effects = beat.blocks.filter((block) => block.type === "audio" && block.role === "sfx");
   const takes = lines.filter((line) => line.take !== undefined).length;
   const { files } = useServices().deps;
+  const arrivals = useStore(mediaArrivals, (s) => s.count);
   // Every type is named: authors define them, so the first one means something too.
   const typeName = type?.name ?? null;
   const shownLines = expanded ? lines : lines.slice(0, MAX_PREVIEW_LINES);
@@ -46,6 +74,7 @@ export const BeatCard = memo(function BeatCard({
   const classes = [
     "card",
     selected && "is-selected",
+    picked && "is-picked",
     hidden && "is-hidden",
     expanded && "is-expanded",
   ]
@@ -54,13 +83,14 @@ export const BeatCard = memo(function BeatCard({
 
   return (
     <button
+      ref={ref}
       type="button"
       className={classes}
       data-beat-id={beat.id}
       data-swatch={type?.color ?? "bone"}
       data-status={beat.status ?? "draft"}
       aria-pressed={selected}
-      onClick={() => onSelect?.(beat)}
+      onClick={(event) => onSelect?.(beat, event.ctrlKey || event.metaKey || event.shiftKey)}
       onPointerDown={(event) => onPointerDown?.(event, beat)}
       onContextMenu={(event) => onContextMenu?.(event, beat)}
     >
@@ -90,7 +120,7 @@ export const BeatCard = memo(function BeatCard({
         )}
         {beat.intensity !== undefined && (
           <span className="card__intensity" aria-label={`Tension ${beat.intensity} of 5`}>
-            {[1, 2, 3, 4, 5].map((level) => (
+            {[0, 1, 2, 3, 4, 5].map((level) => (
               <span key={level} className={level <= (beat.intensity ?? 0) ? "is-on" : undefined} />
             ))}
           </span>
@@ -99,6 +129,7 @@ export const BeatCard = memo(function BeatCard({
 
       {cover !== undefined && (
         <img
+          key={arrivals}
           className="card__cover"
           src={files.mediaUrl(cover.src)}
           alt={cover.text}
@@ -131,13 +162,19 @@ export const BeatCard = memo(function BeatCard({
         lines.length === 0 &&
         beat.label === undefined &&
         cover === undefined &&
-        sounds.length === 0 && <span className="card__empty">Empty card</span>}
+        sounds.length === 0 &&
+        effects.length === 0 && <span className="card__empty">Empty card</span>}
 
-      {(notes > 0 || sounds.length > 0 || takes > 0) && (
+      {(notes > 0 || sounds.length > 0 || effects.length > 0 || takes > 0) && (
         <span className="card__foot">
           {sounds.length > 0 && (
             <span className="card__sound" title={sounds.map((sound) => sound.text).join(", ")}>
               ♪ {sounds.length === 1 ? sounds[0]?.text || "Sound" : `${sounds.length} sounds`}
+            </span>
+          )}
+          {effects.length > 0 && (
+            <span className="card__sound" title={effects.map((effect) => effect.text).join(", ")}>
+              SFX {effects.length === 1 ? effects[0]?.text || "Effect" : `× ${effects.length}`}
             </span>
           )}
           {takes > 0 && <span>{takes === 1 ? "1 take" : `${takes} takes`}</span>}

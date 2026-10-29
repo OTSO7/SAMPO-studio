@@ -117,6 +117,17 @@ matiasBack.send({ t: "member", token });
 const welcome = await matiasBack.nextOf("welcome");
 assert.equal(welcome.role, "member");
 
+// The start screen asks who is here without joining: an answer, then the relay hangs up.
+const peeker = await connect(room);
+peeker.send({ t: "owner", secret: ownerSecret, peek: true });
+const online = await peeker.nextOf("online");
+assert.equal(online.owner, true);
+assert.equal(online.hellos.length, 1);
+assert.equal((await peeker.nextOf("closed")).code, 1000);
+const strangerPeek = await connect(room);
+strangerPeek.send({ t: "member", token: secret(), peek: true });
+assert.notEqual((await strangerPeek.next()).t, "online");
+
 // A picture waits in the mailbox until every member has it, then the relay lets it go.
 const file = (label, bytes) => {
   const name = createHash("sha256").update(label).digest("hex");

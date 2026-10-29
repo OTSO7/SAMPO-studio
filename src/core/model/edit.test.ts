@@ -16,6 +16,7 @@ import {
   moveBeat,
   NEW_PHASE_TITLE,
   moveCardType,
+  moveBlock,
   removeBlock,
   removeCardType,
   removeEntity,
@@ -275,6 +276,15 @@ describe("blocks", () => {
     const first = b1.blocks[0];
     if (first === undefined) throw new Error("fixture changed");
     expect(types(removeBlock(story, first.id))).toEqual(["action"]);
+  });
+
+  it("moves a block within its card and clamps the position", () => {
+    const [first, second] = b1.blocks;
+    if (first === undefined || second === undefined) throw new Error("fixture changed");
+    const ids = (s: typeof story) => findBeat(s, b1.id)?.beat.blocks.map((b) => b.id);
+    expect(ids(moveBlock(story, first.id, 99))?.at(-1)).toBe(first.id);
+    expect(ids(moveBlock(story, second.id, -3))?.[0]).toBe(second.id);
+    expect(ids(moveBlock(story, first.id, 0))).toEqual(ids(story));
   });
 
   it("changes a block's type and keeps its text", () => {

@@ -8,6 +8,7 @@ import { insertCard, type InsertKind } from "@ui/board/insert-card";
 import { ScriptEditor } from "@ui/board/ScriptEditor";
 import { buildLookup } from "@ui/board/story-lookup";
 import { useAddImages, useImageInput } from "@ui/board/use-images";
+import { LivePresence } from "@ui/live/LivePresence";
 import { EditableText } from "@ui/primitives/EditableText";
 import { Kbd } from "@ui/primitives/Kbd";
 import { useServices } from "@ui/services/use-services";
@@ -18,6 +19,17 @@ interface FocusViewProps {
   story: Story;
   initialPhase?: number;
   onExit: () => void;
+}
+
+type Layout = "grid" | "list";
+const LAYOUT_KEY = "sampo.focusLayout";
+
+function readLayout(): Layout {
+  try {
+    return localStorage.getItem(LAYOUT_KEY) === "list" ? "list" : "grid";
+  } catch {
+    return "grid";
+  }
 }
 
 function isTyping(target: EventTarget | null): boolean {
@@ -39,6 +51,7 @@ export function FocusView({ story, initialPhase = 0, onExit }: FocusViewProps) {
   const [requested, setRequested] = useState(initialPhase);
   const [newCard, setNewCard] = useState<string | null>(null);
   const lookup = useMemo(() => buildLookup(story), [story]);
+  const [layout, setLayout] = useState<Layout>(readLayout);
 
   const last = Math.max(story.phases.length - 1, 0);
   const index = Math.min(Math.max(requested, 0), last);
@@ -104,16 +117,35 @@ export function FocusView({ story, initialPhase = 0, onExit }: FocusViewProps) {
     setNewCard(result.beatId);
   };
 
+  const switchLayout = () => {
+    const nextLayout: Layout = layout === "grid" ? "list" : "grid";
+    setLayout(nextLayout);
+    try {
+      localStorage.setItem(LAYOUT_KEY, nextLayout);
+    } catch {
+      // Remembering the choice is a nicety; the switch itself works without storage.
+    }
+  };
+
   const previous = story.phases[index - 1];
   const next = story.phases[index + 1];
 
   return (
     <div className="focus" role="dialog" aria-modal="true" aria-label="Focus mode">
+      <LivePresence selectedId={null} />
       <header className="focus__top">
         <span className="focus__story">{story.title}</span>
         <span className="focus__progress">
           Phase {index + 1} of {story.phases.length}
         </span>
+        <button
+          type="button"
+          className="focus__exit focus__layout"
+          aria-label={layout === "grid" ? "Show cards as a list" : "Show cards side by side"}
+          onClick={switchLayout}
+        >
+          {layout === "grid" ? "▤ List" : "▦ Grid"}
+        </button>
         <button type="button" className="focus__exit" onClick={onExit}>
           Exit <Kbd keys={["Esc"]} />
         </button>
@@ -147,7 +179,7 @@ export function FocusView({ story, initialPhase = 0, onExit }: FocusViewProps) {
             />
           </div>
 
-          <div className="focus__cards">
+          <div className={`focus__cards focus__cards--${layout}`}>
             {phase.beats.map((beat, beatIndex) => (
               <FocusCard
                 key={beat.id}

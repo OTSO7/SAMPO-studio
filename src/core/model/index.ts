@@ -1,6 +1,7 @@
 export type {
   ActionBlock,
   AudioBlock,
+  SoundRole,
   Block,
   BlockType,
   ImageBlock,
@@ -28,6 +29,8 @@ export {
   moveBeat,
   moveCardType,
   NEW_PHASE_TITLE,
+  moveBlock,
+  setSoundRole,
   removeBlock,
   removeCardType,
   removeEntity,

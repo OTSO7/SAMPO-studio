@@ -7,7 +7,7 @@ import {
   type Intensity,
   type Story,
 } from "@core/model";
-import { INTENSITY_NAMES } from "./intensity";
+import { tensionLabel } from "./intensity";
 import { SpeakerCombo } from "./SpeakerCombo";
 import { STATUS_NAMES } from "./status";
 
@@ -123,8 +123,8 @@ export function TensionPicker({ beat, edit }: Omit<FieldProps, "story">) {
             type="button"
             role="radio"
             aria-checked={beat.intensity === level}
-            aria-label={INTENSITY_NAMES[level]}
-            title={INTENSITY_NAMES[level]}
+            aria-label={tensionLabel(level)}
+            title={String(level)}
             className={`tension__bar ${(beat.intensity ?? -1) >= level ? "is-on" : ""}`}
             style={{ height: `${8 + level * 4}px` }}
             onClick={() => {
@@ -136,7 +136,7 @@ export function TensionPicker({ beat, edit }: Omit<FieldProps, "story">) {
         ))}
       </div>
       <span className="tension-field__value">
-        {beat.intensity === undefined ? "Not set" : INTENSITY_NAMES[beat.intensity]}
+        {beat.intensity === undefined ? "Not set" : `${beat.intensity} / 5`}
       </span>
     </div>
   );

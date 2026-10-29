@@ -82,8 +82,16 @@ function blockToJson(block: Block) {
     case "note":
       return { type: block.type, id: block.id, kind: block.kind, text: block.text };
     case "image":
-    case "audio":
       return { type: block.type, id: block.id, text: block.text, src: block.src };
+    case "audio":
+      // Music writes exactly what earlier versions wrote; only effects carry a role.
+      return {
+        type: block.type,
+        id: block.id,
+        text: block.text,
+        src: block.src,
+        ...optional("role", block.role),
+      };
   }
 }
 

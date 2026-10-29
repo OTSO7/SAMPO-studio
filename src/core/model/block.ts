@@ -52,7 +52,15 @@ export interface AudioBlock {
   /** A `media:` reference to a file packed into the story. */
   readonly src: string;
   readonly text: string;
+  /**
+   * Music (absent, the default) plays one track at a time with a full player. `"sfx"` is an
+   * effect, a soundboard pad that can be hit again and again, each hit on top of the last.
+   * Absent rather than `"music"`, so files stay as older versions wrote and read them.
+   */
+  readonly role?: SoundRole;
 }
+
+export type SoundRole = "sfx";
 
 export type Block = ActionBlock | LineBlock | NoteBlock | ImageBlock | AudioBlock;
 export type BlockType = Block["type"];

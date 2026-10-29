@@ -2,7 +2,7 @@ import {
   ENTITY_KINDS,
   mediaIdOf,
   NOTE_KINDS,
-  SWATCHES,
+  isSwatch,
   type Beat,
   type Block,
   type CardType,
@@ -94,9 +94,10 @@ function readCardType(r: Reader, value: unknown, path: string): CardType | undef
 
   const id = r.id("cardType", o["id"], `${path}.id`);
   const name = r.string(o["name"], `${path}.name`);
-  const color = r.oneOf(o["color"], SWATCHES, `${path}.color`);
+  // A colour this version does not know (from a newer app) falls back instead of failing.
+  const color = isSwatch(o["color"]) ? o["color"] : "bone";
 
-  if (id === undefined || name === undefined || color === undefined) return undefined;
+  if (id === undefined || name === undefined) return undefined;
   return { id, name, color };
 }
 
@@ -110,8 +111,7 @@ function readEntity(r: Reader, value: unknown, path: string): Entity | undefined
   const aliases = r.each(o["aliases"], `${path}.aliases`, (item, p) => r.string(item, p));
   const description = r.optionalString(o["description"], `${path}.description`);
   const actor = r.optionalString(o["actor"], `${path}.actor`);
-  const color =
-    o["color"] === undefined ? undefined : r.oneOf(o["color"], SWATCHES, `${path}.color`);
+  const color = isSwatch(o["color"]) ? o["color"] : undefined;
 
   if (id === undefined || kind === undefined || name === undefined) return undefined;
   return {
@@ -214,7 +214,11 @@ function readBlock(r: Reader, value: unknown, path: string): Block | undefined {
       // Older stories hold pictures inline; they are packed on the next save.
       const inline = type === "image" && String(o["src"]).startsWith("data:image/");
       const src = inline ? (o["src"] as string) : readMedia(r, o["src"], `${path}.src`);
-      return src === undefined ? undefined : { type, id, src, text };
+      if (src === undefined) return undefined;
+      // Anything but a known role plays as music, so a newer file never fails to open.
+      return type === "audio" && o["role"] === "sfx"
+        ? { type, id, src, text, role: "sfx" }
+        : { type, id, src, text };
     }
   }
 }

@@ -102,7 +102,26 @@ export type LiveState =
       readonly invitesOpen: boolean;
       /** What the project holds on the relay, once asked. */
       readonly usage: Usage | null;
+      /** Set while the project opens: nothing can be edited until both sides agree. */
+      readonly gate: SyncGate | null;
     };
+
+/**
+ * Opening a shared project waits until this computer has everything the others have and they
+ * have everything made here: the latest edits, then this computer's own unsent ones, then the
+ * pictures and sounds. Only then can the story be edited, so nobody works on an old copy.
+ */
+export interface SyncGate {
+  readonly stage: "connecting" | "receiving" | "sending" | "files";
+  /** Pictures and sounds still to arrive, and how many there were, while on "files". */
+  readonly filesLeft: number;
+  readonly filesTotal: number;
+  /** The cloud has not answered for a while; the person may go on with the copy here. */
+  readonly offline: boolean;
+}
+
+/** Counts pictures and sounds that arrived from others, so what shows them can load again. */
+export const mediaArrivals = createStore({ count: 0 });
 
 export const live: Store<{ state: LiveState }> = createStore({
   state: { kind: "off" } as LiveState,
@@ -152,6 +171,10 @@ const FLUSH_MS = 60;
 const PERSIST_MS = 700;
 const PRESENCE_MS = 20_000;
 const MEDIA_WAIT_MS = 60_000;
+/** No answer from the cloud this long while opening: offer to go on offline. */
+const GATE_OFFLINE_MS = 8_000;
+/** Sending this computer's unsent edits may take this long before the gate stops waiting. */
+const GATE_SEND_MS = 30_000;
 const SNAPSHOT_EVERY = 200;
 const BEFORE_CHANGES_BACKUP_MS = 2 * 60 * 1000;
 /** Close codes after which reconnecting is pointless. */
@@ -340,6 +363,72 @@ function deleteOnRelay(record: ProjectRecord): Promise<boolean> {
   });
 }
 
+/** A sealed introduction's name; null when it does not open with this project's key. */
+async function openName(keys: ProjectKeys, hello: string): Promise<string | null> {
+  try {
+    const plain = await open(keys.seal, fromBase64url(hello));
+    if (plain === null) return null;
+    const { name } = JSON.parse(new TextDecoder().decode(plain)) as { name?: unknown };
+    return typeof name === "string" && name.trim() !== "" ? name.slice(0, 40) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Who is working on a project right now, asked without joining it, for the start screen.
+ * Null when the relay cannot be reached; nobody in the project sees the question.
+ */
+export function peekProject(record: ProjectRecord): Promise<string[] | null> {
+  if (record.secret === "") return Promise.resolve(null);
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (names: string[] | null) => {
+      if (done) return;
+      done = true;
+      window.clearTimeout(timer);
+      socket.close();
+      resolve(names);
+    };
+    const socket = new WebSocket(`${RELAY}/session/${record.id}`);
+    const timer = window.setTimeout(() => finish(null), 10_000);
+    socket.addEventListener("open", () => {
+      const auth =
+        record.role === "owner"
+          ? { t: "owner", secret: record.secret, peek: true }
+          : { t: "member", token: record.secret, peek: true };
+      socket.send(JSON.stringify(auth));
+    });
+    socket.addEventListener("message", (event: MessageEvent<unknown>) => {
+      if (typeof event.data !== "string") return;
+      const message = JSON.parse(event.data) as { t?: string; owner?: boolean; hellos?: unknown };
+      if (message.t !== "online") return;
+      const hellos = Array.isArray(message.hellos) ? message.hellos.filter(isString) : [];
+      void projectKeys(fromBase64url(record.key))
+        .then((keys) => Promise.all(hellos.map((hello) => openName(keys, hello))))
+        .then(
+          (names) => {
+            const owner =
+              message.owner === true
+                ? [record.role === "owner" ? "You, on another computer" : record.ownerName]
+                : [];
+            finish([...owner, ...names.map((name) => name ?? "?")]);
+          },
+          () => finish(null),
+        );
+    });
+    socket.addEventListener("error", () => finish(null));
+    socket.addEventListener("close", () => finish(null));
+  });
+}
+
+const isString = (value: unknown): value is string => typeof value === "string";
+
+/** Goes on with this computer's copy without waiting for the project to be in sync. */
+export function skipSyncGate(): void {
+  current?.openGate();
+}
+
 export function answerKnock(peer: string, admit: boolean): void {
   current?.control({ t: admit ? "admit" : "deny", peer });
   current?.dropKnock(peer);
@@ -445,6 +534,15 @@ class Project {
   private incoming = new Map<string, { id: string; parts: Uint8Array[]; got: number }>();
   private wanted = new Map<string, { id: string; done: () => void }>();
   private lastBackup = 0;
+  private gate: SyncGate | null = {
+    stage: "connecting",
+    filesLeft: 0,
+    filesTotal: 0,
+    offline: false,
+  };
+  private gateTimer: number | null = null;
+  /** Waiting for the outbox to empty, while the gate is on "sending". */
+  private drained: (() => void)[] = [];
   private stopWatching: () => void;
 
   constructor(
@@ -501,6 +599,12 @@ class Project {
 
   connect(create: boolean): void {
     if (this.stopped) return;
+    if (this.gate !== null && this.gateTimer === null) {
+      this.gateTimer = window.setTimeout(() => {
+        this.gateTimer = null;
+        if (this.gate?.stage === "connecting") this.setGate({ offline: true });
+      }, GATE_OFFLINE_MS);
+    }
     const socket = new WebSocket(`${RELAY}/session/${this.record.id}`);
     socket.binaryType = "arraybuffer";
     this.socket = socket;
@@ -547,6 +651,7 @@ class Project {
         this.caughtUp = 0;
         this.loadedBeforePull = this.synced !== null;
         this.cloudFull = false;
+        if (this.gate !== null) this.setGate({ stage: "receiving", offline: false });
         this.control({ t: "pull", after: this.record.lastSeq });
         this.sendPresence();
         this.presenceTimer ??= window.setInterval(() => this.sendPresence(), PRESENCE_MS);
@@ -556,6 +661,7 @@ class Project {
         this.pulling = false;
         this.seen(message.upTo);
         this.flush();
+        void this.passGate();
         void this.syncMedia();
         this.compact();
         this.control({ t: "usage" });
@@ -582,6 +688,7 @@ class Project {
         this.outbox.splice(0, head.count);
         this.sent = Math.max(0, this.sent - head.count);
         this.persistSoon();
+        if (this.outbox.length === 0) for (const done of this.drained.splice(0)) done();
         this.publish();
         return;
       }
@@ -761,15 +868,8 @@ class Project {
     this.publish();
   }
 
-  private async openName(hello: string): Promise<string | null> {
-    try {
-      const plain = await open(this.keys.seal, fromBase64url(hello));
-      if (plain === null) return null;
-      const { name } = JSON.parse(new TextDecoder().decode(plain)) as { name?: unknown };
-      return typeof name === "string" && name.trim() !== "" ? name.slice(0, 40) : null;
-    } catch {
-      return null;
-    }
+  private openName(hello: string): Promise<string | null> {
+    return openName(this.keys, hello);
   }
 
   dropKnock(peer: string): void {
@@ -782,8 +882,10 @@ class Project {
     this.showing = this.showing.then(async () => {
       const next = readStory(this.doc, this.synced);
       if (next === null || next === this.synced) return;
-      await this.fetchMedia(storyMediaIds(next));
-      const latest = readStory(this.doc, this.synced) ?? next;
+      // Text shows at once; pictures and sounds follow as they arrive (see mediaArrivals).
+      // Waiting for them first is what made others' edits appear only after a while.
+      if (this.gate === null) void this.fetchMedia(storyMediaIds(next));
+      const latest = next;
       if (this.synced === null) {
         this.load(latest);
         return;
@@ -914,30 +1016,43 @@ class Project {
 
   // ---------- pictures and sounds ----------
 
-  private async hasMedia(id: string): Promise<boolean> {
-    const url = this.deps.files.mediaUrl(`media:${id}`);
-    if (url === "") return false;
+  /** Which of `ids` are not on this computer. Asks for file names only, never reads a file. */
+  private async missingOf(ids: readonly string[]): Promise<Set<string>> {
     try {
-      return (await fetch(url)).ok;
+      return new Set(await this.deps.files.missingMedia(ids));
     } catch {
-      return false;
+      return new Set(ids);
     }
   }
 
   /** Fetches pictures this computer does not have from the relay, waiting a while for them. */
-  private async fetchMedia(ids: readonly string[]): Promise<void> {
+  private async fetchMedia(
+    ids: readonly string[],
+    onEach: () => void = () => undefined,
+    waitMs = MEDIA_WAIT_MS,
+  ): Promise<void> {
     if (!this.online) return;
+    const missing = await this.missingOf(ids);
     const names: string[] = [];
     const arrived: Promise<void>[] = [];
-    for (const id of ids) {
-      if (await this.hasMedia(id)) continue;
+    for (const id of missing) {
       const name = await mediaName(this.keys, id);
       names.push(name);
-      arrived.push(new Promise((done) => this.wanted.set(name, { id, done })));
+      arrived.push(
+        new Promise((done) =>
+          this.wanted.set(name, {
+            id,
+            done: () => {
+              onEach();
+              done();
+            },
+          }),
+        ),
+      );
     }
     if (names.length === 0) return;
     this.control({ t: "media-get", names });
-    await Promise.race([Promise.all(arrived), new Promise((r) => setTimeout(r, MEDIA_WAIT_MS))]);
+    await Promise.race([Promise.all(arrived), new Promise((r) => setTimeout(r, waitMs))]);
   }
 
   /**
@@ -951,8 +1066,9 @@ class Project {
     await this.sendUnsentMedia();
 
     const here: string[] = [];
+    const missing = await this.missingOf([...used]);
     for (const id of used) {
-      if (await this.hasMedia(id)) here.push(await mediaName(this.keys, id));
+      if (!missing.has(id)) here.push(await mediaName(this.keys, id));
     }
     if (here.length > 0) this.control({ t: "media-ack", names: here });
     void this.fetchMedia([...used]);
@@ -1104,9 +1220,59 @@ class Project {
     if (ref === `media:${want.id}`) {
       this.wanted.delete(name);
       want.done();
+      mediaArrivals.setState((state) => ({ count: state.count + 1 }));
       // Here now: once everyone has confirmed, the relay deletes its copy.
       this.control({ t: "media-ack", names: [name] });
     }
+  }
+
+  // ---------- opening in sync ----------
+
+  private setGate(patch: Partial<SyncGate>): void {
+    if (this.gate === null) return;
+    this.gate = { ...this.gate, ...patch };
+    this.publish();
+  }
+
+  /** Lets the person edit; from the gate's last step, or their choice to go on without it. */
+  openGate(): void {
+    if (this.gate === null) return;
+    this.gate = null;
+    if (this.gateTimer !== null) window.clearTimeout(this.gateTimer);
+    this.gateTimer = null;
+    for (const done of this.drained.splice(0)) done();
+    this.publish();
+    // Whatever the gate did not wait for comes in the background now.
+    if (this.synced !== null) void this.fetchMedia(storyMediaIds(this.synced));
+  }
+
+  /** After catching up: everything shown, own edits delivered, files here. Then edit away. */
+  private async passGate(): Promise<void> {
+    if (this.gate === null) return;
+    await this.showing;
+    if (this.outbox.length > 0 && !this.cloudFull) {
+      this.setGate({ stage: "sending" });
+      await Promise.race([
+        new Promise<void>((done) => this.drained.push(done)),
+        new Promise((done) => setTimeout(done, GATE_SEND_MS)),
+      ]);
+    }
+    const story = this.synced;
+    if (this.gate === null || story === null) {
+      this.openGate();
+      return;
+    }
+    const missing = await this.missingOf(storyMediaIds(story));
+    if (missing.size > 0) {
+      this.setGate({ stage: "files", filesLeft: missing.size, filesTotal: missing.size });
+      // Large recordings take a while: the gate waits as long as they keep coming.
+      await this.fetchMedia(
+        [...missing],
+        () => this.setGate({ filesLeft: Math.max(0, (this.gate?.filesLeft ?? 1) - 1) }),
+        10 * 60_000,
+      );
+    }
+    this.openGate();
   }
 
   // ---------- keeping it ----------
@@ -1145,13 +1311,15 @@ class Project {
     this.online = false;
     this.sent = 0;
     this.inFlight = [];
+    if (this.gate !== null && this.gate.stage !== "files") this.setGate({ offline: true });
     this.publish();
     if (this.stopped || FINAL_CLOSES.has(code)) return;
     // Dropped connection: try again, sooner at first. Edits keep landing locally meanwhile.
     this.retries += 1;
     window.setTimeout(
       () => this.connect(create && this.record.lastSeq === 0),
-      Math.min(30_000, 1000 * 2 ** Math.min(this.retries, 5)),
+      // Someone waiting at the syncing screen gets a try every two seconds.
+      this.gate === null ? Math.min(30_000, 1000 * 2 ** Math.min(this.retries, 5)) : 2000,
     );
   }
 
@@ -1166,6 +1334,7 @@ class Project {
     this.stopWatching();
     if (this.presenceTimer !== null) window.clearInterval(this.presenceTimer);
     if (this.fullRetryTimer !== null) window.clearTimeout(this.fullRetryTimer);
+    if (this.gateTimer !== null) window.clearTimeout(this.gateTimer);
     this.socket?.close();
     this.undoManager.destroy();
     if (current === this) current = null;
@@ -1203,6 +1372,7 @@ class Project {
         usage: this.usage,
         members: this.members,
         unsent: this.outbox.length,
+        gate: this.gate,
       },
     });
   }

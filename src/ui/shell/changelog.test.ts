@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import changelog from "../../../CHANGELOG.md?raw";
-import { parseChangelog } from "./changelog";
+import { highlightsOf, parseChangelog } from "./changelog";
 
 describe("parseChangelog", () => {
   it("reads versions, groups, wrapped bullets and paragraphs", () => {
@@ -39,6 +39,45 @@ describe("parseChangelog", () => {
       },
       { version: "1.0.0", date: "2026-10-01", blocks: [{ kind: "text", text: "First." }] },
     ]);
+  });
+
+  it("shows a release by its highlights, leaving the rest to the releases page", () => {
+    const [release] = parseChangelog(
+      [
+        "## 2.0.0 — 2026-11-01",
+        "",
+        "Big one.",
+        "",
+        "### Highlights",
+        "",
+        "- The best part",
+        "",
+        "### Fixed",
+        "",
+        "- A small thing",
+      ].join("\n"),
+    );
+    if (release === undefined) throw new Error("not parsed");
+
+    expect(highlightsOf(release)).toEqual({
+      version: "2.0.0",
+      date: "2026-11-01",
+      blocks: [
+        { kind: "text", text: "Big one." },
+        { kind: "list", items: ["The best part"] },
+      ],
+      trimmed: true,
+    });
+    // Releases written before highlights show whole, with nothing left out.
+    const old = parseChangelog("## 1.0.0 — 2026-10-01\n\nFirst.\n")[0];
+    if (old === undefined) throw new Error("not parsed");
+    expect(highlightsOf(old).trimmed).toBe(false);
+  });
+
+  it("gives the latest release highlights for the app to show", () => {
+    const latest = parseChangelog(changelog)[0];
+    if (latest === undefined) throw new Error("no release");
+    expect(highlightsOf(latest).trimmed).toBe(true);
   });
 
   // Fails a release whose changelog was not written.

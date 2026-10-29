@@ -1,3 +1,4 @@
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
 
@@ -35,4 +36,17 @@ export async function checkForUpdate(): Promise<AvailableUpdate | null> {
       await relaunch();
     },
   };
+}
+
+const RELEASES_URL = "https://github.com/OTSO7/SAMPO-studio/releases";
+
+/** Opens every change of a version, or of all versions, on the releases page in the browser. */
+export async function openReleaseNotes(version?: string): Promise<void> {
+  const url = version === undefined ? RELEASES_URL : `${RELEASES_URL}/tag/v${version}`;
+  try {
+    await openUrl(url);
+  } catch {
+    // Outside the desktop app the browser opens it itself.
+    window.open(url, "_blank", "noopener");
+  }
 }

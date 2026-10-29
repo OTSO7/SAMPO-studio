@@ -29,6 +29,8 @@ tauri-plugin-updater = "2"
 # Already in the tree through the updater; used here for the .sampo package format.
 zip = { version = "4.6", default-features = false }
 sha2 = "0.10"
+# Already in the tree through zip: checksums for files added to a package in place.
+crc32fast = "1"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
@@ -36,5 +38,6 @@ sha2 = "0.10"
 codegen-units = 1
 lto = true
 opt-level = 3
-panic = "abort"
+# Not "abort": a bug in one command must fail that command, not close the app mid-song.
+panic = "unwind"
 strip = true

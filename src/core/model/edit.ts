@@ -1,4 +1,4 @@
-import type { Block, TextBlockType } from "./block";
+import type { Block, TextBlockType, SoundRole } from "./block";
 import type { Entity } from "./entity";
 import { defaultCardType } from "./factories";
 import {
@@ -279,7 +279,13 @@ export type NewBlock =
   | { readonly type: "action"; readonly text?: string }
   | { readonly type: "line"; readonly speaker: EntityId | null; readonly text?: string }
   | { readonly type: "note"; readonly text?: string }
-  | { readonly type: "image" | "audio"; readonly src: string; readonly text?: string };
+  | { readonly type: "image"; readonly src: string; readonly text?: string }
+  | {
+      readonly type: "audio";
+      readonly src: string;
+      readonly text?: string;
+      readonly role?: SoundRole;
+    };
 
 /** Inserts a block into a beat at `index` (default: the end) and returns its id. */
 export function addBlock(
@@ -310,6 +316,26 @@ export function removeBlock(story: Story, blockId: BlockId): Story {
       ? { ...beat, blocks: beat.blocks.filter((block) => block.id !== blockId) }
       : beat,
   );
+}
+
+/** Moves a block to `toIndex` within its own card, counted without the block itself. */
+export function moveBlock(story: Story, blockId: BlockId, toIndex: number): Story {
+  return mapBeats(story, (beat) => {
+    const block = beat.blocks.find((b) => b.id === blockId);
+    if (block === undefined) return beat;
+    const rest = beat.blocks.filter((b) => b !== block);
+    const at = Math.max(0, Math.min(toIndex, rest.length));
+    return { ...beat, blocks: [...rest.slice(0, at), block, ...rest.slice(at)] };
+  });
+}
+
+/** Makes a sound music (`undefined`) or an effect, keeping its file, name and place. */
+export function setSoundRole(story: Story, blockId: BlockId, role: SoundRole | undefined): Story {
+  return mapBlocks(story, blockId, (block): Block => {
+    if (block.type !== "audio" || block.role === role) return block;
+    const { role: _old, ...rest } = block;
+    return role === undefined ? rest : { ...rest, role };
+  });
 }
 
 /** Turns a block into prose, a spoken line or a note, keeping its text and id. */
@@ -526,8 +552,11 @@ function toBlock(block: NewBlock, ids: IdFactory): Block {
   const text = block.text ?? "";
   if (block.type === "line") return { type: "line", id, speaker: block.speaker, text };
   if (block.type === "note") return { type: "note", id, kind: "idea", text };
-  if (block.type === "image" || block.type === "audio") {
-    return { type: block.type, id, src: block.src, text };
+  if (block.type === "image") return { type: "image", id, src: block.src, text };
+  if (block.type === "audio") {
+    return block.role === undefined
+      ? { type: "audio", id, src: block.src, text }
+      : { type: "audio", id, src: block.src, text, role: block.role };
   }
   return { type: "action", id, text };
 }

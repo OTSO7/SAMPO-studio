@@ -11,6 +11,14 @@
   --swatch-violet: #a99bd6;
   --swatch-slate: #8e9aa6;
   --swatch-amber: #d9b45a;
+  --swatch-red: #e0705f;
+  --swatch-coral: #e8957a;
+  --swatch-lime: #c3d26a;
+  --swatch-teal: #5fb3a1;
+  --swatch-sky: #7fb2e6;
+  --swatch-blue: #7184d6;
+  --swatch-magenta: #c97fc0;
+  --swatch-sand: #bfa98a;
 }
 
 [data-swatch="bone"] {
@@ -36,6 +44,30 @@
 }
 [data-swatch="amber"] {
   --swatch: var(--swatch-amber);
+}
+[data-swatch="red"] {
+  --swatch: var(--swatch-red);
+}
+[data-swatch="coral"] {
+  --swatch: var(--swatch-coral);
+}
+[data-swatch="lime"] {
+  --swatch: var(--swatch-lime);
+}
+[data-swatch="teal"] {
+  --swatch: var(--swatch-teal);
+}
+[data-swatch="sky"] {
+  --swatch: var(--swatch-sky);
+}
+[data-swatch="blue"] {
+  --swatch: var(--swatch-blue);
+}
+[data-swatch="magenta"] {
+  --swatch: var(--swatch-magenta);
+}
+[data-swatch="sand"] {
+  --swatch: var(--swatch-sand);
 }
 
 .swatch-dot {

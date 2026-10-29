@@ -1,4 +1,4 @@
-import { Fragment, memo, type MouseEvent, type PointerEvent } from "react";
+import { Fragment, memo, useCallback, useState, type MouseEvent, type PointerEvent } from "react";
 
 import type { Beat, BeatId, Phase } from "@core/model";
 import { EditableText } from "@ui/primitives/EditableText";
@@ -15,7 +15,8 @@ interface PhaseColumnProps {
   selectedBeatId: BeatId | null;
   dragging: DragState | null;
   dropTarget: DropTarget | null;
-  onSelect: (beat: Beat) => void;
+  picked: ReadonlySet<BeatId>;
+  onSelect: (beat: Beat, add: boolean) => void;
   onRename: (phase: Phase, title: string) => void;
   onRelocate: (phase: Phase, location: string) => void;
   onSplitAt: (beat: Beat) => void;
@@ -36,6 +37,7 @@ export const PhaseColumn = memo(function PhaseColumn({
   selectedBeatId,
   dragging,
   dropTarget,
+  picked,
   onSelect,
   onRename,
   onRelocate,
@@ -48,6 +50,16 @@ export const PhaseColumn = memo(function PhaseColumn({
   onToggleExpand,
   onCardContextMenu,
 }: PhaseColumnProps) {
+  const [clipped, setClipped] = useState<ReadonlySet<BeatId>>(new Set());
+  const onClipped = useCallback((beatId: BeatId, cut: boolean) => {
+    setClipped((current) => {
+      if (current.has(beatId) === cut) return current;
+      const next = new Set(current);
+      if (cut) next.add(beatId);
+      else next.delete(beatId);
+      return next;
+    });
+  }, []);
   const dropIndex = dragging !== null && dropTarget?.phaseId === phase.id ? dropTarget.index : null;
   const draggedIndex =
     dragging === null ? -1 : phase.beats.findIndex((beat) => beat.id === dragging.beatId);
@@ -139,6 +151,7 @@ export const PhaseColumn = memo(function PhaseColumn({
                   number={`${number}.${index + 1}`}
                   lookup={lookup}
                   selected={beat.id === selectedBeatId}
+                  picked={picked.has(beat.id)}
                   hidden={isDragged}
                   expanded={expandedIds.has(beat.id)}
                   onSelect={onSelect}
@@ -146,24 +159,28 @@ export const PhaseColumn = memo(function PhaseColumn({
                     onCardPointerDown(event, beat, phase);
                   }}
                   onContextMenu={onCardContextMenu}
+                  onClipped={onClipped}
                 />
                 {/* Beside the card button, not inside it: a button may not hold another. */}
-                {!isDragged && canExpand(beat) && (
-                  <button
-                    type="button"
-                    className={`card__expand ${expandedIds.has(beat.id) ? "is-expanded" : ""}`}
-                    aria-label={expandedIds.has(beat.id) ? "Collapse the card" : "Expand the card"}
-                    aria-expanded={expandedIds.has(beat.id)}
-                    title={expandedIds.has(beat.id) ? "Collapse" : "Show the whole card"}
-                    onClick={() => {
-                      onToggleExpand(beat.id);
-                    }}
-                  >
-                    <svg viewBox="0 0 10 10" aria-hidden="true">
-                      <path d="M2 3.5l3 3 3-3" />
-                    </svg>
-                  </button>
-                )}
+                {!isDragged &&
+                  (canExpand(beat) || clipped.has(beat.id) || expandedIds.has(beat.id)) && (
+                    <button
+                      type="button"
+                      className={`card__expand ${expandedIds.has(beat.id) ? "is-expanded" : ""}`}
+                      aria-label={
+                        expandedIds.has(beat.id) ? "Collapse the card" : "Expand the card"
+                      }
+                      aria-expanded={expandedIds.has(beat.id)}
+                      title={expandedIds.has(beat.id) ? "Collapse" : "Show the whole card"}
+                      onClick={() => {
+                        onToggleExpand(beat.id);
+                      }}
+                    >
+                      <svg viewBox="0 0 10 10" aria-hidden="true">
+                        <path d="M2 3.5l3 3 3-3" />
+                      </svg>
+                    </button>
+                  )}
               </li>
             </Fragment>
           );

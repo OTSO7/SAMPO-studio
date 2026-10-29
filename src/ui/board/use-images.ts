@@ -1,12 +1,18 @@
 import { useCallback, useEffect } from "react";
 
 import { showNotice } from "@app/store";
-import { addBlock, type BeatId, type NewBlock, type Story } from "@core/model";
+import { addBlock, type BeatId, type NewBlock, type SoundRole, type Story } from "@core/model";
 import { useServices } from "@ui/services/use-services";
 import { isImage, mediaFiles, readImage, soundExtension } from "./images";
 
 type Edit = (recipe: (story: Story) => Story, group?: string) => void;
-export type AddImages = (beatId: BeatId, files: readonly File[], index?: number) => void;
+/** `role` makes added sounds effects; without it they are music. */
+export type AddImages = (
+  beatId: BeatId,
+  files: readonly File[],
+  index?: number,
+  role?: SoundRole,
+) => void;
 
 /**
  * Adds pictures and sounds to a card as one undo step, from `index` on (default: the end).
@@ -16,7 +22,7 @@ export function useAddImages(edit: Edit): AddImages {
   const { notices, files: story } = useServices().deps;
 
   return useCallback(
-    (beatId, files, index) => {
+    (beatId, files, index, role) => {
       const pack = async (file: File): Promise<NewBlock> => {
         if (isImage(file)) {
           return { type: "image", src: await story.putMedia(await readImage(file), "webp") };
@@ -24,7 +30,10 @@ export function useAddImages(edit: Edit): AddImages {
         const extension = soundExtension(file);
         if (extension === null) throw new Error(`${file.name} is not a picture or a sound`);
         const name = file.name.replace(/\.[^.]+$/u, "");
-        return { type: "audio", src: await story.putMedia(file, extension), text: name };
+        const src = await story.putMedia(file, extension);
+        return role === undefined
+          ? { type: "audio", src, text: name }
+          : { type: "audio", src, text: name, role };
       };
 
       void Promise.allSettled(files.map(pack)).then((results) => {

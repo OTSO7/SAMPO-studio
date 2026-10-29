@@ -46,11 +46,12 @@ import { Inspector } from "./Inspector";
 import { insertCard, type InsertKind } from "./insert-card";
 import { PacingPanel } from "./PacingPanel";
 import { PhaseColumn } from "./PhaseColumn";
+import { PickedBar } from "./PickedBar";
 import { QuickFind } from "./QuickFind";
 import { STATUS_NAMES } from "./status";
 import { StorySettings } from "./StorySettings";
 import { buildLookup } from "./story-lookup";
-import { useCardDrag, type DropTarget } from "./use-card-drag";
+import { NEW_PHASE, useCardDrag, type DropTarget } from "./use-card-drag";
 import { useAddImages, useImageInput } from "./use-images";
 
 import "./board.css";
@@ -72,6 +73,7 @@ export function Board({ story }: { story: Story }) {
   const { document: store } = services.deps;
   const { prompts } = services;
   const [selectedId, setSelectedId] = useState<BeatId | null>(null);
+  const [picked, setPicked] = useState<ReadonlySet<BeatId>>(new Set());
   const [focusOnOpen, setFocusOnOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -226,7 +228,12 @@ export function Board({ story }: { story: Story }) {
 
   const drop = useCallback(
     (beatId: BeatId, target: DropTarget) => {
-      edit((s) => moveBeat(s, beatId, target.phaseId, target.index));
+      edit((s) => {
+        if (target.phaseId !== NEW_PHASE) return moveBeat(s, beatId, target.phaseId, target.index);
+        const added = addPhase(s);
+        const phase = added.phases.at(-1);
+        return phase === undefined ? s : moveBeat(added, beatId, phase.id, 0);
+      });
       setSelectedId(beatId);
     },
     [edit],
@@ -238,12 +245,23 @@ export function Board({ story }: { story: Story }) {
   );
 
   const select = useCallback(
-    (beat: Beat) => {
+    (beat: Beat, add: boolean) => {
       if (consumeClick()) return;
+      if (add) {
+        // The open card joins the pick, so Ctrl-clicking a second card picks two.
+        setPicked((current) => {
+          const next = new Set(current);
+          if (current.size === 0 && selectedId !== null) next.add(selectedId);
+          if (!next.delete(beat.id)) next.add(beat.id);
+          return next;
+        });
+        return;
+      }
+      setPicked(new Set());
       setFocusOnOpen(false);
       setSelectedId((current) => (current === beat.id ? null : beat.id));
     },
-    [consumeClick],
+    [consumeClick, selectedId],
   );
 
   const cardPointerDown = useCallback(
@@ -331,6 +349,17 @@ export function Board({ story }: { story: Story }) {
     },
     [store, edit],
   );
+
+  useEffect(() => {
+    if (picked.size === 0) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPicked(new Set());
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [picked]);
 
   // Keyboard: arrows move the selection, Alt+arrows move the card, Delete removes it.
   useEffect(() => {
@@ -637,6 +666,7 @@ export function Board({ story }: { story: Story }) {
                   selectedBeatId={selectedId}
                   dragging={dragging}
                   dropTarget={dropTarget}
+                  picked={picked}
                   onSelect={select}
                   onRename={rename}
                   onRelocate={relocate}
@@ -654,15 +684,27 @@ export function Board({ story }: { story: Story }) {
               ))}
               <button
                 type="button"
-                className="board__add-phase"
+                className={`board__add-phase ${dragging !== null && dropTarget?.phaseId === NEW_PHASE ? "is-drop-target" : ""}`}
+                data-new-phase
                 onClick={() => {
                   edit((s) => addPhase(s));
                 }}
               >
-                + Phase
+                {dragging !== null ? "Drop for a new phase" : "+ Phase"}
               </button>
             </div>
           </div>
+        )}
+
+        {view === "board" && picked.size > 0 && (
+          <PickedBar
+            story={story}
+            picked={picked}
+            edit={edit}
+            onClear={() => {
+              setPicked(new Set());
+            }}
+          />
         )}
 
         {view === "board" && cards > 0 && (

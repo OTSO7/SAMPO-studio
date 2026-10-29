@@ -16,6 +16,7 @@
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   min-width: 0;
+  position: relative;
   min-height: 0;
 }
 
@@ -652,6 +653,7 @@ body.is-resizing .inspector__resizer::after {
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   min-width: 0;
+  padding-left: 14px;
 }
 
 .script__block {
@@ -1672,7 +1674,7 @@ body.is-resizing-rows * {
   left: 0;
   z-index: 5;
   display: grid;
-  grid-template-columns: repeat(4, 24px);
+  grid-template-columns: repeat(8, 24px);
   gap: var(--space-1);
   padding: var(--space-2);
   border: 1px solid var(--hairline-strong);
@@ -2212,35 +2214,6 @@ body.is-resizing-rows * {
   }
 }
 
-.player__track {
-  position: relative;
-  flex: 1;
-  height: 4px;
-  min-width: 40px;
-  border-radius: 2px;
-  background: var(--hairline-strong);
-  cursor: pointer;
-}
-
-/* A taller invisible hit area, so the thin bar is easy to grab. */
-.player__track::before {
-  content: "";
-  position: absolute;
-  inset: -8px 0;
-}
-
-.player__track:focus-visible {
-  outline: 1px solid var(--ochre-text);
-  outline-offset: 4px;
-}
-
-.player__fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  border-radius: 2px;
-  background: var(--ochre-text);
-}
-
 .player__time {
   flex: none;
   font-family: var(--font-mono);
@@ -2327,7 +2300,7 @@ body.is-resizing-rows * {
   align-items: center;
   gap: var(--space-2);
   height: 30px;
-  padding: 0 var(--space-6) 0 var(--space-3);
+  padding: 0 0 0 var(--space-3);
   border: 1px solid var(--hairline-strong);
   border-radius: var(--radius-md);
   background: var(--ink-raised);
@@ -2356,7 +2329,10 @@ body.is-resizing-rows * {
   border-color: var(--ochre);
 }
 
+/* The select fills the box up to its right edge, so the arrow opens it too. */
 .type-select select {
+  align-self: stretch;
+  padding-right: var(--space-6);
   appearance: none;
   border: 0;
   background: none;
@@ -2626,4 +2602,236 @@ body.is-resizing-rows * {
 
 .card__expand.is-expanded svg {
   transform: rotate(180deg);
+}
+
+/* While a card is dragged, the add button is where it starts a new phase. */
+.board__add-phase.is-drop-target {
+  border-color: var(--signal);
+  background: var(--signal-wash);
+  color: var(--bone);
+}
+
+/* ---------- several cards picked with Ctrl or Shift ---------- */
+
+.card.is-picked {
+  outline: 2px solid var(--signal);
+  outline-offset: 1px;
+}
+
+.picked-bar {
+  position: absolute;
+  bottom: var(--space-4);
+  left: 50%;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: var(--ink-overlay);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 50%);
+  font-size: var(--text-sm);
+  color: var(--bone);
+  transform: translateX(-50%);
+}
+
+.picked-bar__count {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--signal);
+}
+
+.picked-bar select,
+.picked-bar__clear {
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: var(--ink-raised);
+  font: inherit;
+  color: var(--bone);
+  cursor: pointer;
+}
+
+/* ---------- moving blocks inside a card ---------- */
+
+.script__grip {
+  position: absolute;
+  top: 2px;
+  left: -16px;
+  z-index: 2;
+  width: 14px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--bone-faint);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.script__block:hover > .script__grip {
+  opacity: 1;
+}
+
+.script__grip:hover {
+  color: var(--bone);
+}
+
+.script__block.is-drop-before {
+  box-shadow: 0 -2px 0 var(--signal);
+}
+
+.script__block.is-drop-after {
+  box-shadow: 0 2px 0 var(--signal);
+}
+
+.player__restart {
+  border-color: var(--hairline-strong);
+  background: none;
+  color: var(--bone-muted);
+}
+
+.player__restart:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ---------- waveform: shows the track and is where you move in it ---------- */
+
+.wave {
+  --wave-played: var(--ochre);
+  --wave-rest: color-mix(in srgb, var(--bone-faint) 55%, transparent);
+  --wave-hover: var(--bone-muted);
+  position: relative;
+  flex: 1;
+  min-width: 48px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.wave--large {
+  height: 34px;
+}
+
+.wave.is-dragging {
+  cursor: grabbing;
+}
+
+.wave:focus-visible {
+  outline: 2px solid var(--ochre);
+  outline-offset: 2px;
+}
+
+.wave__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The time under the pointer while hovering or dragging. */
+.wave__tip {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--bone);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 16px;
+  color: var(--ink);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+/* ---------- sound effects: soundboard pads ---------- */
+
+.pad {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--signal) 45%, var(--hairline-strong));
+  border-radius: var(--radius-md);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--signal) 16%, var(--ink-raised)),
+    var(--ink-raised)
+  );
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 6%),
+    0 2px 0 rgb(0 0 0 / 35%);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-align: left;
+  color: var(--bone);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  will-change: transform;
+}
+
+.pad:hover {
+  border-color: var(--signal);
+}
+
+.pad:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+
+.pad--large {
+  min-height: 72px;
+  font-size: var(--text-md);
+}
+
+.pad__icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: var(--signal);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pad__label {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Music or SFX, switchable on every sound. */
+.sound-role {
+  display: inline-flex;
+  flex: none;
+  overflow: hidden;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+}
+
+.sound-role button {
+  height: 24px;
+  padding: 0 var(--space-2);
+  border: 0;
+  background: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--bone-faint);
+  cursor: pointer;
+}
+
+.sound-role button[aria-pressed="true"] {
+  background: var(--ink-overlay);
+  color: var(--bone);
 }

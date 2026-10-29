@@ -48,6 +48,11 @@ export class StoryFiles {
     return mediaRef(await this.host.putMedia(file, extension));
   }
 
+  /** Which of these media ids (no `media:` prefix) are not on this computer yet. */
+  missingMedia(ids: readonly string[]): Promise<string[]> {
+    return this.host.missingMedia(ids);
+  }
+
   /** Where the window loads a block's picture or sound from. */
   mediaUrl(src: string): string {
     const id = mediaIdOf(src);

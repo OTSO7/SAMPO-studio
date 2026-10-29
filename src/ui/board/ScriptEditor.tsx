@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
 
 import {
   addBlock,
   ensureCharacter,
+  moveBlock,
+  setSoundRole,
   removeBlock,
   setBlockType,
   setLineDirection,
@@ -15,14 +17,18 @@ import {
   type ImageBlock,
   type MediaBlock,
   type NewBlock,
+  type SoundRole,
   type Story,
   type TextBlockType,
 } from "@core/model";
+import { mediaArrivals } from "@app/live/project";
 import { showNotice } from "@app/store";
+import { useStore } from "@ui/hooks/use-store";
 import { useServices } from "@ui/services/use-services";
 import { AudioPlayer } from "./AudioPlayer";
 import { ImageViewer } from "./ImageViewer";
 import { mediaFiles, soundExtension } from "./images";
+import { SfxPad } from "./SfxPad";
 import { SpeakerCombo } from "./SpeakerCombo";
 import { estimateSeconds } from "./story-lookup";
 import { useAddImages } from "./use-images";
@@ -44,6 +50,9 @@ interface FocusRequest {
 
 type TextBlock = Exclude<Block, MediaBlock>;
 
+/** Drag data type for moving a block inside a card, so files dropped on it are told apart. */
+const BLOCK_DRAG = "application/x-sampo-block";
+
 const BLOCK_TYPES: readonly { type: TextBlockType; label: string }[] = [
   { type: "action", label: "Text" },
   { type: "line", label: "Line" },
@@ -60,6 +69,15 @@ export function ScriptEditor({
 }: ScriptEditorProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const pendingFocus = useRef<FocusRequest | null>(null);
+  // A picture or sound from a friend may land after the text: loading again shows it.
+  const arrivals = useStore(mediaArrivals, (s) => s.count);
+  const [dropAt, setDropAt] = useState<number | null>(null);
+  const dropMark = (index: number) =>
+    dropAt === index
+      ? "is-drop-before"
+      : dropAt === beat.blocks.length && index === beat.blocks.length - 1
+        ? "is-drop-after"
+        : "";
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const takeInputRef = useRef<HTMLInputElement | null>(null);
   /** The line a picked recording belongs to, while the file dialog is open. */
@@ -69,9 +87,12 @@ export function ScriptEditor({
   const { deps } = useServices();
   const files = deps.files;
 
-  const pickFiles = (accept: string) => {
+  // What the next picked sound becomes: music or an effect.
+  const pickRole = useRef<SoundRole | undefined>(undefined);
+  const pickFiles = (accept: string, role?: SoundRole) => {
     const input = fileInputRef.current;
     if (input === null) return;
+    pickRole.current = role;
     input.accept = accept;
     input.click();
   };
@@ -166,12 +187,45 @@ export function ScriptEditor({
         event.preventDefault();
         edit((s) => setLineSpeaker(s, block.id, character.id));
       }
+    } else if (event.altKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+      event.preventDefault();
+      pendingFocus.current = { blockId: block.id, field: "text" };
+      edit((s) => moveBlock(s, block.id, index + (event.key === "ArrowUp" ? -1 : 1)));
     } else if (event.key === "Backspace" && block.text === "" && beat.blocks.length > 1) {
       event.preventDefault();
       const neighbour = beat.blocks[index - 1] ?? beat.blocks[index + 1];
       if (neighbour !== undefined) pendingFocus.current = { blockId: neighbour.id, field: "text" };
       edit((s) => removeBlock(s, block.id));
     }
+  };
+
+  // A block's grip drags it to another place in the card; the line shows where it lands.
+  const grip = (block: Block) => (
+    <span
+      className="script__grip"
+      draggable
+      title="Drag to move · Alt ↑↓ while typing"
+      aria-hidden="true"
+      onDragStart={(event) => {
+        event.dataTransfer.setData(BLOCK_DRAG, block.id);
+        event.dataTransfer.effectAllowed = "move";
+        const element = event.currentTarget.closest("[data-block-id]");
+        if (element !== null) event.dataTransfer.setDragImage(element, 12, 12);
+      }}
+      onDragEnd={() => {
+        setDropAt(null);
+      }}
+    >
+      ⠿
+    </span>
+  );
+  const dropIndex = (event: DragEvent<HTMLElement>) => {
+    const rows = [...event.currentTarget.querySelectorAll(":scope > [data-block-id]")];
+    const below = rows.findIndex((row) => {
+      const rect = row.getBoundingClientRect();
+      return event.clientY < rect.top + rect.height / 2;
+    });
+    return below === -1 ? rows.length : below;
   };
 
   return (
@@ -190,26 +244,82 @@ export function ScriptEditor({
         addImages(beat.id, pasted, index === -1 ? undefined : index + 1);
       }}
     >
-      <div className="script__blocks">
+      <div
+        className="script__blocks"
+        onDragOver={(event) => {
+          if (!event.dataTransfer.types.includes(BLOCK_DRAG)) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+          setDropAt(dropIndex(event));
+        }}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropAt(null);
+        }}
+        onDrop={(event) => {
+          const id = event.dataTransfer.getData(BLOCK_DRAG);
+          const from = beat.blocks.findIndex((block) => block.id === id);
+          const moved = beat.blocks[from];
+          setDropAt(null);
+          if (moved === undefined) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const to = dropIndex(event);
+          // Positions above count the dragged block itself; moveBlock counts without it.
+          edit((s) => moveBlock(s, moved.id, to > from ? to - 1 : to));
+        }}
+      >
         {beat.blocks.map((block, index) =>
           block.type === "audio" ? (
             <div
               key={block.id}
-              className="script__block script__block--audio"
+              className={`script__block script__block--audio ${dropMark(index)}`}
               data-block-id={block.id}
             >
-              <AudioPlayer url={files.mediaUrl(block.src)} label={block.text || "Sound"} />
+              {grip(block)}
+              {block.role === "sfx" ? (
+                <SfxPad
+                  key={arrivals}
+                  url={files.mediaUrl(block.src)}
+                  label={block.text || "Effect"}
+                  large={size === "large"}
+                />
+              ) : (
+                <AudioPlayer
+                  key={arrivals}
+                  url={files.mediaUrl(block.src)}
+                  label={block.text || "Sound"}
+                />
+              )}
               <div className="script__caption-row">
                 <input
                   className="script__caption"
-                  aria-label="Sound name"
-                  placeholder="Name this sound"
+                  aria-label={block.role === "sfx" ? "Effect name" : "Sound name"}
+                  placeholder={block.role === "sfx" ? "Name this effect" : "Name this sound"}
                   value={block.text}
                   onChange={(event) => {
                     const text = event.target.value;
                     edit((s) => updateBlockText(s, block.id, text), `text:${block.id}`);
                   }}
                 />
+                <span className="sound-role" role="group" aria-label="Kind of sound">
+                  {(["music", "sfx"] as const).map((kind) => (
+                    <button
+                      key={kind}
+                      type="button"
+                      aria-pressed={(block.role ?? "music") === kind}
+                      title={
+                        kind === "music"
+                          ? "Music: one track at a time, with a waveform"
+                          : "SFX: a pad to hit again and again"
+                      }
+                      onClick={() => {
+                        edit((s) => setSoundRole(s, block.id, kind === "sfx" ? "sfx" : undefined));
+                      }}
+                    >
+                      {kind === "music" ? "Music" : "SFX"}
+                    </button>
+                  ))}
+                </span>
                 <button
                   type="button"
                   className="script__tool script__tool--danger"
@@ -225,9 +335,10 @@ export function ScriptEditor({
           ) : block.type === "image" ? (
             <figure
               key={block.id}
-              className="script__block script__block--image"
+              className={`script__block script__block--image ${dropMark(index)}`}
               data-block-id={block.id}
             >
+              {grip(block)}
               <button
                 type="button"
                 className="script__image"
@@ -236,7 +347,12 @@ export function ScriptEditor({
                   setViewing(block);
                 }}
               >
-                <img src={files.mediaUrl(block.src)} alt={block.text} draggable={false} />
+                <img
+                  key={arrivals}
+                  src={files.mediaUrl(block.src)}
+                  alt={block.text}
+                  draggable={false}
+                />
               </button>
               <figcaption className="script__caption-row">
                 <input
@@ -264,9 +380,10 @@ export function ScriptEditor({
           ) : (
             <div
               key={block.id}
-              className={`script__block script__block--${block.type}`}
+              className={`script__block script__block--${block.type} ${dropMark(index)}`}
               data-block-id={block.id}
             >
+              {grip(block)}
               {block.type !== "action" && (
                 <div className="script__meta">
                   {block.type === "line" ? (
@@ -431,12 +548,21 @@ export function ScriptEditor({
           </button>
           <button
             type="button"
-            title="Music, ambience or an effect. Or drop a sound file onto the card"
+            title="A track to play through, one at a time, with a waveform. Or drop a sound file onto the card"
             onClick={() => {
               pickFiles("audio/*");
             }}
           >
-            + Sound
+            + Music
+          </button>
+          <button
+            type="button"
+            title="A sound effect as a soundboard pad: hit it as often as you like, each hit on top of the last"
+            onClick={() => {
+              pickFiles("audio/*", "sfx");
+            }}
+          >
+            + SFX
           </button>
         </span>
         <input
@@ -445,7 +571,7 @@ export function ScriptEditor({
           multiple
           hidden
           onChange={(event) => {
-            addImages(beat.id, mediaFiles(event.target.files));
+            addImages(beat.id, mediaFiles(event.target.files), undefined, pickRole.current);
             event.target.value = "";
           }}
         />

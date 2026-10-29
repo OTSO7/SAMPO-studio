@@ -15,6 +15,9 @@ export interface DropTarget {
   readonly index: number;
 }
 
+/** Drop onto the "+ Phase" spot: the card moves into a new phase made for it. */
+export const NEW_PHASE = "new-phase" as PhaseId;
+
 export interface DragState {
   readonly beatId: BeatId;
   readonly width: number;
@@ -61,6 +64,10 @@ export function useCardDrag(
     (x: number, y: number, beatId: BeatId): DropTarget | null => {
       const scroller = scrollerRef.current;
       if (scroller === null) return null;
+
+      const spot = scroller.querySelector<HTMLElement>("[data-new-phase]")?.getBoundingClientRect();
+      if (spot !== undefined && x >= spot.left && x <= spot.right)
+        return { phaseId: NEW_PHASE, index: 0 };
 
       let best: { element: HTMLElement; distance: number } | null = null;
       for (const column of scroller.querySelectorAll<HTMLElement>("[data-phase-id]")) {

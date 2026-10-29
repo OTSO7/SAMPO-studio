@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  addBlock,
   addCardType,
+  setSoundRole,
   ensureThread,
   setLineDirection,
   setLineTake,
@@ -310,5 +312,107 @@ describe("deserializeStory", () => {
     expect(beat?.blocks.find((block) => block.type === "line")).toEqual(
       expect.objectContaining({ direction: "kuiskaten" }),
     );
+  });
+});
+
+describe("files from earlier versions", () => {
+  const ORIGINAL_SWATCHES = ["bone", "ochre", "signal", "rose", "moss", "violet", "slate", "amber"];
+
+  it("opens a 0.5.0 file with every original colour exactly as saved", () => {
+    const saved = JSON.parse(serializeStory(baseSample())) as {
+      story: { cardTypes: { color: string }[] };
+    };
+    const types = saved.story.cardTypes;
+    ORIGINAL_SWATCHES.forEach((color, index) => {
+      const type = types[index % types.length];
+      if (type !== undefined) type.color = color;
+    });
+    const text = JSON.stringify(saved, null, 2);
+
+    const loaded = deserializeStory(text);
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) return;
+    expect(loaded.story.cardTypes.map((type) => type.color)).toEqual(
+      types.map((type) => type.color),
+    );
+    // Saved again by this version, nothing about it changes.
+    expect(JSON.parse(serializeStory(loaded.story))).toEqual(saved);
+  });
+
+  it("opens a file with a colour this version does not know, instead of refusing it", () => {
+    const saved = JSON.parse(serializeStory(baseSample())) as {
+      story: { cardTypes: { color: string }[] };
+    };
+    const [first] = saved.story.cardTypes;
+    if (first === undefined) throw new Error("fixture changed");
+    first.color = "ultraviolet";
+
+    const loaded = deserializeStory(JSON.stringify(saved));
+    expect(loaded.ok).toBe(true);
+    if (loaded.ok) expect(loaded.story.cardTypes[0]?.color).toBe("bone");
+  });
+
+  it("still writes the same format version, so 0.5.0 opens what this version saves", () => {
+    expect(JSON.parse(serializeStory(baseSample())).version).toBe(CURRENT_VERSION);
+    // 0.5.0 writes and reads version 7; a higher number would make it refuse the file.
+    expect(CURRENT_VERSION).toBe(7);
+  });
+});
+
+describe("music and sound effects", () => {
+  const withSounds = () => {
+    const story = baseSample();
+    const beatId = story.phases[0]?.beats[0]?.id;
+    if (beatId === undefined) throw new Error("fixture changed");
+    const music = addBlock(story, beatId, { type: "audio", src: SOUND, text: "Theme" });
+    const effect = addBlock(music.story, beatId, {
+      type: "audio",
+      src: SOUND,
+      text: "Punch",
+      role: "sfx",
+    });
+    return { story: effect.story, musicId: music.blockId, effectId: effect.blockId };
+  };
+  const blockIn = (text: string, id: string | null) => {
+    const saved = JSON.parse(text) as {
+      story: { phases: { beats: { blocks: Record<string, unknown>[] }[] }[] };
+    };
+    return saved.story.phases[0]?.beats[0]?.blocks.find((block) => block["id"] === id);
+  };
+
+  it("keeps an effect an effect through a save and load", () => {
+    const { story, effectId } = withSounds();
+    const loaded = deserializeStory(serializeStory(story));
+    expect(loaded.ok && loaded.story).toEqual(story);
+    expect(blockIn(serializeStory(story), effectId)?.["role"]).toBe("sfx");
+  });
+
+  it("writes music exactly as 0.5.0 did, with no new field", () => {
+    const { story, musicId } = withSounds();
+    expect(Object.keys(blockIn(serializeStory(story), musicId) ?? {}).sort()).toEqual([
+      "id",
+      "src",
+      "text",
+      "type",
+    ]);
+  });
+
+  it("plays a role it does not know as music, instead of refusing the file", () => {
+    const { story, effectId } = withSounds();
+    const text = serializeStory(story).replace('"role": "sfx"', '"role": "drum-machine"');
+    const loaded = deserializeStory(text);
+    expect(loaded.ok).toBe(true);
+    if (!loaded.ok) return;
+    const block = loaded.story.phases[0]?.beats[0]?.blocks.find((b) => b.id === effectId);
+    expect(block).toMatchObject({ type: "audio", text: "Punch" });
+    expect(block && "role" in block).toBe(false);
+  });
+
+  it("switches a sound between music and effect, leaving no trace of the old role", () => {
+    const { story, effectId } = withSounds();
+    if (effectId === null) throw new Error("not added");
+    const music = setSoundRole(story, effectId, undefined);
+    expect(Object.keys(blockIn(serializeStory(music), effectId) ?? {})).not.toContain("role");
+    expect(setSoundRole(music, effectId, "sfx")).toEqual(story);
   });
 });

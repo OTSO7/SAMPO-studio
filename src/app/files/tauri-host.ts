@@ -1,8 +1,10 @@
 import { convertFileSrc, invoke, isTauri } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
 
 import { FILE_EXTENSION } from "@core/file";
 import { FileError, type FileErrorCode, type FileHost } from "./file-host";
+import { opening } from "./opening";
 
 const FILTERS = [{ name: "SAMPO Story", extensions: [FILE_EXTENSION] }];
 const EXPORT_FILTERS = {
@@ -76,11 +78,18 @@ export const tauriFileHost: FileHost = {
 
   async readText(path) {
     desktopOnly();
+    opening.setState({ active: true, done: 0, total: 0 });
+    const stop = await listen<{ done: number; total: number }>("open-progress", (event) => {
+      opening.setState(event.payload);
+    }).catch(() => () => undefined);
     try {
       await ensureMediaFolder();
       return await invoke<string>("read_story_file", { path });
     } catch (error) {
       throw toFileError(error);
+    } finally {
+      stop();
+      opening.setState({ active: false, done: 0, total: 0 });
     }
   },
 
@@ -105,6 +114,15 @@ export const tauriFileHost: FileHost = {
       return await invoke<string>("put_media", new Uint8Array(await file.arrayBuffer()), {
         headers: { "x-extension": extension },
       });
+    } catch (error) {
+      throw toFileError(error);
+    }
+  },
+
+  async missingMedia(ids) {
+    if (!isTauri()) return ids.filter((id) => !browserMedia.has(id));
+    try {
+      return await invoke<string[]>("missing_media", { ids });
     } catch (error) {
       throw toFileError(error);
     }

@@ -1,12 +1,13 @@
 //! Tauri commands exposed to the frontend. Kept thin: validation and file handling live in
 //! `storage.rs`, which can be tested without a running app.
 
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
 use std::sync::{Mutex, PoisonError};
 
 use serde::Serialize;
 use tauri::ipc::{InvokeBody, Request};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::storage::{self, StorageError};
 
@@ -37,18 +38,55 @@ impl CommandError {
 
 /// Where the open stories' pictures and sounds are kept while the app shows and plays them.
 /// Files are named by their content, so stories can share this folder safely.
-fn media_path(app: &AppHandle) -> Result<PathBuf, CommandError> {
+pub(crate) fn media_path(app: &AppHandle) -> Result<PathBuf, CommandError> {
     app.path()
         .app_cache_dir()
         .map(|dir| dir.join("media"))
         .map_err(|err| CommandError::new("io", err.to_string()))
 }
 
+/// Runs a command so that a bug in it becomes an error message instead of taking the app,
+/// and whatever music is playing, down with it.
+pub(crate) fn guarded<T>(run: impl FnOnce() -> Result<T, CommandError>) -> Result<T, CommandError> {
+    catch_unwind(AssertUnwindSafe(run)).unwrap_or_else(|_| {
+        Err(CommandError::new(
+            "internal",
+            "something went wrong inside the app",
+        ))
+    })
+}
+
+/// How far opening a story has got, for the window to show while new files are unpacked.
+#[derive(Clone, Serialize)]
+struct OpenProgress {
+    done: u64,
+    total: u64,
+}
+
 // File IO blocks, so these run on Tauri's thread pool instead of the main thread.
 
 #[tauri::command(async)]
 pub fn read_story_file(app: AppHandle, path: PathBuf) -> Result<String, CommandError> {
-    Ok(storage::read_story(&path, &media_path(&app)?)?)
+    guarded(|| {
+        let media = media_path(&app)?;
+        Ok(storage::read_story_with_progress(
+            &path,
+            &media,
+            &mut |done, total| {
+                let _ = app.emit("open-progress", OpenProgress { done, total });
+            },
+        )?)
+    })
+}
+
+/// Which of the given media ids are not on this computer yet: a cheap check that never reads the files.
+#[tauri::command(async)]
+pub fn missing_media(app: AppHandle, ids: Vec<String>) -> Result<Vec<String>, CommandError> {
+    let media = media_path(&app)?;
+    Ok(ids
+        .into_iter()
+        .filter(|id| !storage::is_media_id(id) || !media.join(id).is_file())
+        .collect())
 }
 
 /// One story write at a time: two saves sharing the same temporary file would collide.
@@ -63,12 +101,14 @@ pub fn write_story_file(
 ) -> Result<(), CommandError> {
     // A panicked earlier save leaves nothing half-done behind, so its poison can be ignored.
     let _guard = WRITING.lock().unwrap_or_else(PoisonError::into_inner);
-    Ok(storage::write_story_atomic(
-        &path,
-        &contents,
-        &media,
-        &media_path(&app)?,
-    )?)
+    guarded(|| {
+        Ok(storage::write_story_atomic(
+            &path,
+            &contents,
+            &media,
+            &media_path(&app)?,
+        )?)
+    })
 }
 
 /// Takes a picture or sound as raw bytes, with its file extension in the `x-extension`
@@ -83,7 +123,7 @@ pub fn put_media(app: AppHandle, request: Request<'_>) -> Result<String, Command
         .get("x-extension")
         .and_then(|value| value.to_str().ok())
         .unwrap_or_default();
-    Ok(storage::put_media(&media_path(&app)?, bytes, extension)?)
+    guarded(|| Ok(storage::put_media(&media_path(&app)?, bytes, extension)?))
 }
 
 /// The folder `put_media` stores into, so the window can show and play files from it.

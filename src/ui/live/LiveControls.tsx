@@ -170,7 +170,7 @@ function ProjectPanel({
           : "Offline. Changes are kept on this computer and sent when back online."}
       </p>
 
-      {state.usage !== null && <CloudSpace usage={state.usage} />}
+      {owner && state.usage !== null && <CloudSpace usage={state.usage} />}
 
       {state.code !== null && (
         <section className="live__section">

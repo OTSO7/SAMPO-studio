@@ -3,6 +3,67 @@
 What is new in each version of SAMPO Studio. The app shows the latest entries after it
 updates; click the version number in the bottom corner to read them again.
 
+## 0.6.0 — 2026-10-29
+
+Built for playing live: faster saves, steadier sound, and sound effects.
+
+### Highlights
+
+- Sound effects: add a sound as SFX and it becomes a soundboard pad you can hit as fast as you
+  like, every hit on top of the last. Music stays one track at a time.
+- A now-playing deck that keeps the music going when you change page, with a waveform you can
+  press or drag through. Drag the deck anywhere; it snaps back to its corner.
+- Saving a story with gigabytes of music now takes as long as saving its text, and the version
+  history keeps each sound once instead of in every copy.
+- Opening a shared project waits until everyone's work is here before you can edit, so nobody
+  works on an old copy.
+- Select several cards with Ctrl or Shift and set their type or status at once.
+
+### Added
+
+- Music and SFX: `+ Music` and `+ SFX` on every card, and a switch on each sound to change
+  which it is. Effects play through their own channel and never interrupt the music; at most
+  24 overlap, the oldest making room.
+- Now playing: the sound that is on keeps playing across pages, the card panel and focus mode,
+  until you stop it. Back to the start, pause and stop on the deck and in every player.
+- Waveforms for music, measured once per track and remembered; the played part fills in as it
+  plays. Press anywhere to jump, hold and drag to scrub, arrow keys step five seconds.
+- The deck sits bottom left in focus mode, clear of the phase buttons. Drag it anywhere; drop
+  it near its corner or double-click it to put it back.
+- "Importing…" with progress while a large story opens for the first time on a computer.
+- Shared projects: a syncing screen while a project opens, showing what it is waiting for; the
+  start screen shows who is working on each shared project right now; work offline on this
+  computer's copy when the cloud cannot be reached.
+- Drop a card on `+ Phase` to make a new phase for it.
+- Ctrl or Shift click to pick several cards; a bar sets their type or status in one step.
+- Reorder the blocks in a card by dragging their grip, or Alt ↑ / ↓ while typing.
+- Focus mode shows the cards side by side or as a list, and remembers which.
+- Sixteen colours for card types and characters.
+- Click a thread on the Threads wall to keep it lit after the pointer leaves.
+- A saving bar while a save is written.
+
+### Changed
+
+- Saves add only what changed to the end of the file; music already in it is never rewritten.
+  A save cut off by a crash or power cut leaves the previous version readable.
+- Version history keeps each picture and sound once for all copies.
+- Sounds up to 1 GB each, enough for an hour of 24-bit 96 kHz WAV. Sounds stay exactly as they
+  were added, bit for bit; nothing is compressed.
+- Tension is shown as a number from 0 to 5, with six bars on cards and in the panel alike.
+- Others' edits in a shared project show at once instead of after their pictures and sounds.
+- Autosave and version history wait while music plays, and closing the app asks first.
+- The screen stays awake while music plays, and no update is offered in the middle of a song.
+
+### Fixed
+
+- The card type list opens from its arrow too.
+- The arrow to expand a card shows whenever text is cut off.
+- Alt and the scroll wheel zoomed only after an extra click.
+- Someone's coloured ring stayed on a card after they went to focus mode.
+- Only the owner sees the project's cloud space.
+- A fault inside the app no longer closes it; a view that fails can be drawn again while the
+  music plays on. F5, Ctrl R and the mouse's back button no longer reload the app.
+
 ## 0.5.0 — 2026-10-28
 
 Edit a story together with friends.

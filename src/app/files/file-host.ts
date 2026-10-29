@@ -15,6 +15,8 @@ export interface FileHost {
   writeText(path: string, contents: string, media: readonly string[]): Promise<void>;
   /** Keeps a picture or sound for the story and resolves to its packed name. */
   putMedia(file: Blob, extension: string): Promise<string>;
+  /** Which of these packed files are not on this computer; never reads the files themselves. */
+  missingMedia(ids: readonly string[]): Promise<string[]>;
   /** Where the window can load a packed file from. */
   mediaUrl(id: string): string;
   /** When the story file was last written, in ms; `null` when it does not exist. */

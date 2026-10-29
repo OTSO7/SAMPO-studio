@@ -317,3 +317,18 @@
 .focus-card:hover .focus-card__heading:placeholder-shown {
   opacity: 1;
 }
+
+/* One card under another, at a readable width. */
+.focus__cards--list {
+  grid-template-columns: minmax(0, 880px);
+  justify-content: center;
+}
+
+.focus__layout + .focus__exit {
+  margin-left: 0;
+}
+
+/* Room to scroll the last card above the now-playing deck in the bottom left corner. */
+.focus__stage {
+  padding-bottom: 150px;
+}

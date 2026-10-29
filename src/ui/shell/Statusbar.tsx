@@ -46,6 +46,7 @@ export function Statusbar({
 
   return (
     <footer className="shell__statusbar">
+      {status.kind === "saving" && <span className="shell__save-bar" aria-hidden="true" />}
       <span>{shared !== null && path === null ? "Shared project" : file}</span>
       <span className="shell__status-right">
         {saveLabel !== null && (

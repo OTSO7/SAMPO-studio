@@ -19,6 +19,13 @@ export function LivePresence({ selectedId }: { selectedId: string | null }) {
   useEffect(() => {
     shareFocus(selectedId);
   }, [selectedId]);
+  // Leaving the board (focus mode, closing the story) must not leave a stale ring on others' screens.
+  useEffect(
+    () => () => {
+      shareFocus(null);
+    },
+    [],
+  );
 
   // The text block with the cursor, wherever it is: the card panel, the script, focus mode.
   useEffect(() => {
@@ -43,8 +50,13 @@ export function LivePresence({ selectedId }: { selectedId: string | null }) {
     const name = JSON.stringify(person.name.replace(/[^\p{L}\p{N} ._-]/gu, ""));
     const tag = `content:${name};position:absolute;padding:0 6px;border-radius:3px;font:500 10px/16px var(--font-ui);color:var(--ink);background:${color};pointer-events:none;z-index:1`;
     if (person.beatId !== null && SAFE_ID.test(person.beatId)) {
-      const card = `.card[data-beat-id="${person.beatId}"]`;
-      rules += `${card}{position:relative;box-shadow:0 0 0 2px ${color}}${card}::after{${tag};top:8px;right:10px}`;
+      // On the board, the threads wall and in focus mode alike.
+      const card = `.card[data-beat-id="${person.beatId}"],.corkboard__card[data-pinned-card="${person.beatId}"],.focus-card[data-beat-id="${person.beatId}"]`;
+      const tagged = card
+        .split(",")
+        .map((one) => `${one}::after`)
+        .join(",");
+      rules += `${card}{position:relative;box-shadow:0 0 0 2px ${color}}${tagged}{${tag};top:8px;right:10px}`;
     }
     if (person.blockId !== null && SAFE_ID.test(person.blockId)) {
       const block = `[data-block-id="${person.blockId}"]`;
@@ -59,7 +71,7 @@ export function LivePresence({ selectedId }: { selectedId: string | null }) {
     if (!SAFE_ID.test(id)) continue;
     const who = editorOf(id);
     const color = who === undefined ? "var(--ochre)" : personColor(who.peer);
-    rules += `.card[data-beat-id="${id}"],[data-block-id="${id}"]{--live-flash:${color};animation:${flash} 1.4s var(--ease-out)}`;
+    rules += `.card[data-beat-id="${id}"],.focus-card[data-beat-id="${id}"],.corkboard__card[data-pinned-card="${id}"],[data-block-id="${id}"]{--live-flash:${color};animation:${flash} 1.4s var(--ease-out)}`;
   }
 
   return rules === "" ? null : <style>{rules}</style>;

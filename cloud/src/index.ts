@@ -81,8 +81,8 @@ interface Seat {
 }
 
 type Control =
-  | { t: "owner"; secret: string; create?: boolean }
-  | { t: "member"; token: string }
+  | { t: "owner"; secret: string; create?: boolean; peek?: boolean }
+  | { t: "member"; token: string; peek?: boolean }
   | { t: "hello"; hello?: string }
   | { t: "admit" | "deny"; peer: string }
   | { t: "revoke"; member: string }
@@ -166,7 +166,7 @@ export class Room extends DurableObject<Env> {
       case "owner":
         return this.signInOwner(ws, seat, control);
       case "member":
-        return this.signInMember(ws, seat, control.token);
+        return this.signInMember(ws, seat, control.token, control.peek === true);
       case "hello":
         return this.knock(ws, seat, control.hello);
       case "pull":
@@ -210,7 +210,9 @@ export class Room extends DurableObject<Env> {
     } catch {
       // Already closed.
     }
-    if (seat.role !== "guest") this.broadcast({ t: "left", peer: seat.peer }, ws);
+    // Guests (knocks, start-screen peeks) were never in the member list.
+    if (seat.role === "guest") return;
+    this.broadcast({ t: "left", peer: seat.peer }, ws);
     this.sendMembers();
   }
 
@@ -228,7 +230,7 @@ export class Room extends DurableObject<Env> {
   private async signInOwner(
     ws: WebSocket,
     seat: Seat,
-    control: { secret: string; create?: boolean },
+    control: { secret: string; create?: boolean; peek?: boolean },
   ) {
     if (typeof control.secret !== "string" || !SECRET.test(control.secret)) {
       ws.close(4003, "Not the owner");
@@ -236,13 +238,17 @@ export class Room extends DurableObject<Env> {
     }
     const hash = await sha256(control.secret);
     const stored = this.meta("owner");
-    if (stored === null && control.create === true) {
+    if (stored === null && control.create === true && control.peek !== true) {
       this.setMeta("owner", hash);
     } else if (stored === null) {
       this.goodbye(ws, "no-project", 4004);
       return;
     } else if (stored !== hash) {
       ws.close(4003, "Not the owner");
+      return;
+    }
+    if (control.peek === true) {
+      this.peek(ws);
       return;
     }
     this.enter(ws, { ...seat, role: "owner" });
@@ -256,7 +262,7 @@ export class Room extends DurableObject<Env> {
     }
   }
 
-  private async signInMember(ws: WebSocket, seat: Seat, token: string) {
+  private async signInMember(ws: WebSocket, seat: Seat, token: string, peek: boolean) {
     if (typeof token !== "string" || !SECRET.test(token)) {
       ws.close(4003, "Not a member");
       return;
@@ -275,7 +281,28 @@ export class Room extends DurableObject<Env> {
       this.goodbye(ws, "removed", 4001);
       return;
     }
+    if (peek) {
+      this.peek(ws);
+      return;
+    }
     this.enter(ws, { ...seat, role: "member", member: row.member });
+  }
+
+  /**
+   * Who is in the project right now, for a start screen, without joining: the asker never
+   * becomes a seat, so nobody sees them come or go. Answers once and closes.
+   */
+  private peek(ws: WebSocket) {
+    const seats = this.ctx.getWebSockets().map((other) => seatOf(other));
+    const online = new Set(seats.map((seat) => seat.member).filter((m) => m !== undefined));
+    const hellos = this.sql
+      .exec<{ member: string; hello: string }>("SELECT member, hello FROM members ORDER BY created")
+      .toArray()
+      .filter((row) => online.has(row.member))
+      .map((row) => row.hello);
+    const owner = seats.some((seat) => seat.role === "owner");
+    send(ws, JSON.stringify({ t: "online", owner, hellos }));
+    ws.close(1000, "Peeked");
   }
 
   private enter(ws: WebSocket, seat: Seat) {

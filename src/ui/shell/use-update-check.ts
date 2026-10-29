@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { ask, type NoticeStore, type PromptStore, showNotice } from "@app/store";
+import { isPlaying } from "@app/playback";
 import { findUpdate } from "@app/updates";
 
 /** Looks for a newer release a few seconds after start and asks before installing it. */
@@ -9,7 +10,8 @@ export function useUpdateCheck(prompts: PromptStore, notices: NoticeStore): void
     let cancelled = false;
     const timer = window.setTimeout(() => {
       void findUpdate().then(async (update) => {
-        if (cancelled || update === null) return;
+        // Never offer a restart in the middle of a song.
+        if (cancelled || update === null || isPlaying()) return;
         const choice = await ask(prompts, {
           title: "Update available",
           message: `SAMPO Studio ${update.version} is ready. Install it now? The app restarts once.`,

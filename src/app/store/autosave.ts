@@ -10,6 +10,8 @@ export interface Timers {
 export interface AutosaveOptions {
   readonly delayMs?: number;
   readonly timers?: Timers;
+  /** While this is true, autosaves wait (e.g. music is playing); Ctrl S and flush still save. */
+  readonly holdWhile?: () => boolean;
 }
 
 export interface Autosave {
@@ -59,7 +61,12 @@ export function startAutosave(
 
   const schedule = () => {
     cancelTimer();
-    if (shouldSave()) timer = timers.setTimeout(run, delayMs);
+    if (shouldSave()) timer = timers.setTimeout(tick, delayMs);
+  };
+
+  const tick = () => {
+    if (options.holdWhile?.() === true) schedule();
+    else void run();
   };
 
   const run = (): Promise<void> => {

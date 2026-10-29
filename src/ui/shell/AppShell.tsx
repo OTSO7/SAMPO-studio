@@ -2,14 +2,20 @@ import { useCallback, useEffect, useState } from "react";
 
 import { watchBackups } from "@app/backups";
 import { confirmWindowClose, openLaunchFile } from "@app/commands";
-import { watchProjects } from "@app/live/project";
+import { live, watchProjects } from "@app/live/project";
+import { isPlaying } from "@app/playback";
+import { ask } from "@app/store";
 import { guardWindowClose, toggleFullscreen } from "@app/window";
 
 import { Board } from "@ui/board/Board";
 import { FocusView } from "@ui/focus/FocusView";
+import { SyncingScreen } from "@ui/live/SyncingScreen";
 import { useStore } from "@ui/hooks/use-store";
 import { useServices } from "@ui/services/use-services";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { NoticeBar } from "./NoticeBar";
+import { NowPlaying } from "./NowPlaying";
+import { OpeningScreen } from "./OpeningScreen";
 import { PromptDialog } from "./PromptDialog";
 import { ShortcutsSheet } from "./ShortcutsSheet";
 import { StartScreen } from "./StartScreen";
@@ -26,6 +32,9 @@ import "./app-shell.css";
 export function AppShell() {
   const { deps, prompts } = useServices();
   const story = useStore(deps.document, (state) => state.story);
+  const sharedOpen = useStore(live, (s) => s.state.kind === "open");
+  // A shared project cannot be edited until it is in sync; see SyncingScreen.
+  const syncing = useStore(live, (s) => s.state.kind === "open" && s.state.gate !== null);
   const [focusing, setFocusing] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   // The first start after an update opens on what changed.
@@ -37,6 +46,56 @@ export function AppShell() {
   // Shared stories open as their project; every story gets its version history.
   useEffect(() => watchProjects(deps), [deps]);
   useEffect(() => watchBackups(deps.document), [deps]);
+
+  // Windows puts a window into menu mode when Alt is pressed alone; the next inputs then go
+  // to a menu bar this app does not have, which made Alt + wheel zoom stop until a click.
+  useEffect(() => {
+    const keepFocus = (event: KeyboardEvent) => {
+      if (event.key === "Alt") event.preventDefault();
+    };
+    window.addEventListener("keydown", keepFocus);
+    window.addEventListener("keyup", keepFocus);
+    return () => {
+      window.removeEventListener("keydown", keepFocus);
+      window.removeEventListener("keyup", keepFocus);
+    };
+  }, []);
+
+  // The webview's own reload, back and print would stop the music and leave the app: in a
+  // desktop app those keys, the mouse's back button and the page's own right-click menu do
+  // nothing. Text fields keep their menu for copy and paste.
+  useEffect(() => {
+    const keys = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      const ctrl = event.ctrlKey || event.metaKey;
+      if (
+        key === "f5" ||
+        key.startsWith("browser") ||
+        (ctrl && (key === "r" || key === "p")) ||
+        (event.altKey &&
+          (key === "arrowleft" || key === "arrowright") &&
+          !isTextField(event.target))
+      ) {
+        event.preventDefault();
+      }
+    };
+    const menu = (event: MouseEvent) => {
+      if (!isTextField(event.target)) event.preventDefault();
+    };
+    const back = (event: MouseEvent) => {
+      if (event.button === 3 || event.button === 4) event.preventDefault();
+    };
+    window.addEventListener("keydown", keys);
+    window.addEventListener("contextmenu", menu);
+    window.addEventListener("mouseup", back);
+    window.addEventListener("mousedown", back);
+    return () => {
+      window.removeEventListener("keydown", keys);
+      window.removeEventListener("contextmenu", menu);
+      window.removeEventListener("mouseup", back);
+      window.removeEventListener("mousedown", back);
+    };
+  }, []);
 
   // F11 toggles full screen, like a browser or a media player.
   useEffect(() => {
@@ -74,15 +133,28 @@ export function AppShell() {
   useEffect(() => {
     let disposed = false;
     let unlisten: (() => void) | null = null;
-    void guardWindowClose(() => confirmWindowClose(deps)).then((remove) => {
-      if (disposed) remove();
-      else unlisten = remove;
-    });
+    const stopMusicFirst = async () =>
+      !isPlaying() ||
+      (await ask(prompts, {
+        title: "Music is playing",
+        message: "Closing SAMPO Studio stops the sound that is playing.",
+        actions: [
+          { label: "Keep playing", value: "keep" },
+          { label: "Close", value: "close", tone: "danger" },
+        ],
+        cancelValue: "keep",
+      })) === "close";
+    void guardWindowClose(async () => (await stopMusicFirst()) && confirmWindowClose(deps)).then(
+      (remove) => {
+        if (disposed) remove();
+        else unlisten = remove;
+      },
+    );
     return () => {
       disposed = true;
       unlisten?.();
     };
-  }, [deps]);
+  }, [deps, prompts]);
 
   const closeShortcuts = useCallback(() => {
     setShowShortcuts(false);
@@ -119,7 +191,7 @@ export function AppShell() {
   // F5 starts presenting, as in every slide tool.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "F5" && story !== null) {
+      if (event.key === "F5" && story !== null && !syncing) {
         event.preventDefault();
         setFocusing((current) => !current);
       }
@@ -128,12 +200,15 @@ export function AppShell() {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [story]);
+  }, [story, syncing]);
 
-  if (focusing && story !== null) {
+  if (focusing && story !== null && !syncing) {
     return (
       <>
-        <FocusView story={story} onExit={exitFocus} />
+        <ErrorBoundary>
+          <FocusView story={story} onExit={exitFocus} />
+        </ErrorBoundary>
+        <NowPlaying placement="left" />
         <NoticeBar />
         <PromptDialog />
         {showShortcuts && <ShortcutsSheet onClose={closeShortcuts} />}
@@ -145,7 +220,7 @@ export function AppShell() {
     <div className="shell">
       <Titlebar
         onFocus={
-          story === null
+          story === null || syncing
             ? null
             : () => {
                 setFocusing(true);
@@ -154,7 +229,15 @@ export function AppShell() {
       />
       <main className={`shell__main ${story === null ? "" : "shell__main--board"}`}>
         {/* Keyed by story: opening another story starts its board fresh, on the Board view. */}
-        {story === null ? <StartScreen /> : <Board key={story.id} story={story} />}
+        {story !== null && !syncing ? (
+          <ErrorBoundary key={story.id}>
+            <Board story={story} />
+          </ErrorBoundary>
+        ) : sharedOpen ? (
+          <SyncingScreen />
+        ) : (
+          <StartScreen />
+        )}
       </main>
       <Statusbar
         onShowShortcuts={() => {
@@ -164,10 +247,21 @@ export function AppShell() {
           setShowWhatsNew(true);
         }}
       />
+      <NowPlaying />
+      <OpeningScreen />
       <NoticeBar />
       <PromptDialog />
       {showShortcuts && <ShortcutsSheet onClose={closeShortcuts} />}
       {showWhatsNew && <WhatsNew onClose={closeWhatsNew} />}
     </div>
+  );
+}
+
+function isTextField(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable ||
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement)
   );
 }

@@ -1,4 +1,5 @@
 import { StoryFiles, tauriFileHost } from "@app/files";
+import { isPlaying } from "@app/playback";
 import { createRecentFiles } from "@app/recent-files";
 import {
   createDocumentStore,
@@ -24,7 +25,7 @@ export function createServices(): Services {
       recent: createRecentFiles(browserStorage()),
     },
     prompts,
-    autosave: startAutosave(document, files),
+    autosave: startAutosave(document, files, { holdWhile: isPlaying }),
   };
 }
 

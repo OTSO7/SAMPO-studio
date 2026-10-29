@@ -176,6 +176,12 @@ export function ThreadsView({ story, edit, zoom, onOpenCard }: ThreadsViewProps)
                 onMouseLeave={() => {
                   setHoverThread(null);
                 }}
+                // A click anywhere on the row keeps the thread lit after the pointer leaves;
+                // the name, follow dot and delete keep their own clicks.
+                onClick={(event) => {
+                  if ((event.target as Element).closest("button, input, textarea") !== null) return;
+                  setFocused(focused === thread.id ? null : thread.id);
+                }}
               >
                 <button
                   type="button"

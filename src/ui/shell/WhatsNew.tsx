@@ -1,9 +1,11 @@
 import { useEffect } from "react";
 
+import { openReleaseNotes } from "@app/updates";
 import changelog from "../../../CHANGELOG.md?raw";
-import { parseChangelog } from "./changelog";
+import { highlightsOf, parseChangelog } from "./changelog";
 
-const RELEASES = parseChangelog(changelog);
+/** The app shows the latest few, each by its highlights; everything is on the releases page. */
+const RELEASES = parseChangelog(changelog).slice(0, 3).map(highlightsOf);
 
 /** `code` in the changelog becomes code; everything else stays text. */
 function Inline({ text }: { text: string }) {
@@ -71,9 +73,27 @@ export function WhatsNew({ onClose }: { onClose: () => void }) {
                   </p>
                 ),
               )}
+              {release.trimmed && (
+                <button
+                  type="button"
+                  className="whats-new__more"
+                  onClick={() => void openReleaseNotes(release.version)}
+                >
+                  All changes in {release.version} →
+                </button>
+              )}
             </article>
           ))}
         </div>
+        <footer className="whats-new__foot">
+          <button
+            type="button"
+            className="button button--primary"
+            onClick={() => void openReleaseNotes()}
+          >
+            Read all changes
+          </button>
+        </footer>
       </section>
     </div>
   );

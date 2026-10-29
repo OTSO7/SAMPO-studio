@@ -53,6 +53,10 @@ class FakeHost implements FileHost {
     return Promise.resolve(id);
   }
 
+  missingMedia(ids: readonly string[]) {
+    return Promise.resolve([...ids].filter(() => false));
+  }
+
   mediaUrl(id: string) {
     return `asset://media/${id}`;
   }

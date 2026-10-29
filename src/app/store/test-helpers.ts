@@ -42,6 +42,10 @@ export class ControlledHost implements FileHost {
     return Promise.resolve(`${"0".repeat(64)}.${extension}`);
   }
 
+  missingMedia(ids: readonly string[]) {
+    return Promise.resolve([...ids].filter(() => false));
+  }
+
   mediaUrl(id: string) {
     return `media://${id}`;
   }

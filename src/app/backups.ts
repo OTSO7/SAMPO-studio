@@ -2,12 +2,12 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 
 import { serializeStory } from "@core/file";
 import { storyMediaIds, type Story } from "@core/model";
-import { tauriFileHost } from "./files";
+import { isPlaying } from "./playback";
 import type { DocumentStore } from "./store";
 
 /**
- * Version history. Complete copies of each story, pictures and sounds included, written into
- * the app's own folder: when a story opens, every ten minutes of editing, before someone
+ * Version history. Complete copies of each story, written into the app's own folder; each
+ * picture and sound is kept there once for all copies, however many there are. Taken when a story opens, every ten minutes of editing, before someone
  * else's deletions land, and before leaving or deleting a shared project. A backup failing
  * never stops work.
  */
@@ -32,15 +32,17 @@ export async function backupStory(story: Story, reason: BackupReason): Promise<b
   if (!isTauri()) return false;
   try {
     const now = new Date();
-    const folder = await invoke<string>("backup_folder", { storyId: story.id });
     const stamp = now.toISOString().replace(/[:.]/gu, "-");
-    await tauriFileHost.writeText(
-      `${folder}/${stamp} ${reason}.sampo`,
-      serializeStory(story, { savedAt: now.toISOString() }),
-      storyMediaIds(story),
-    );
+    // The text only: its pictures and sounds are kept once for all copies, not in each.
+    await invoke("write_backup", {
+      storyId: story.id,
+      name: `${stamp} ${reason}.sampo`,
+      contents: serializeStory(story, { savedAt: now.toISOString() }),
+      media: storyMediaIds(story),
+    });
     const old = backupsToDrop(await listBackups(story.id), now.getTime());
     for (const backup of old) await invoke("delete_backup", { path: backup.path });
+    if (old.length > 0) await invoke("prune_backup_media");
     return true;
   } catch {
     return false;
@@ -54,7 +56,7 @@ export async function listBackups(storyId: string): Promise<Backup[]> {
 }
 
 export function readBackup(path: string): Promise<string> {
-  return tauriFileHost.readText(path);
+  return invoke<string>("read_backup", { path });
 }
 
 /**
@@ -90,6 +92,8 @@ export function watchBackups(document: DocumentStore): () => void {
   const timer = window.setInterval(() => {
     const { story, revision } = document.getState();
     if (story === null || revision === lastRevision || Date.now() - lastBackup < AUTO_MS) return;
+    // A copy packs every sound into it; that much disk work waits until the music stops.
+    if (isPlaying()) return;
     lastRevision = revision;
     lastBackup = Date.now();
     void backupStory(story, "autosave");
