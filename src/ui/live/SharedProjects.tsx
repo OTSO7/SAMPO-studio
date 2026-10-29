@@ -47,7 +47,7 @@ export function SharedProjects() {
   if (ready.length === 0) return null;
 
   return (
-    <>
+    <div className="start__panel">
       <p className="start__eyebrow start__eyebrow--secondary">Shared</p>
       <ul className="start__recent">
         {ready.map((record) => (
@@ -99,7 +99,7 @@ export function SharedProjects() {
           </li>
         ))}
       </ul>
-    </>
+    </div>
   );
 }
 

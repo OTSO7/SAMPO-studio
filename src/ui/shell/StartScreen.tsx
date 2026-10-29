@@ -60,51 +60,56 @@ export function StartScreen() {
 
   return (
     <section className="start" aria-label="Start">
-      <header className="start__hero">
-        <h1 className="start__title">SAMPO Studio</h1>
-      </header>
-      <ul className="start__actions">
-        {actions.map((action, index) => (
-          <li key={action.label} style={{ animationDelay: `${120 + index * 60}ms` }}>
-            <button
-              type="button"
-              className={`start__action ${index === 0 ? "start__action--primary" : ""}`}
-              onClick={() => void action.run()}
-            >
-              <span className="start__action-text">
-                <span className="start__action-label">{action.label}</span>
-                <span className="start__action-hint">{action.hint}</span>
-              </span>
-              <Kbd keys={action.keys} />
-            </button>
-          </li>
-        ))}
-      </ul>
+      {/* Starting something new on the left, carrying on with your stories on the right. */}
+      <div className="start__side">
+        <header className="start__hero">
+          <h1 className="start__title">SAMPO Studio</h1>
+        </header>
+        <ul className="start__actions">
+          {actions.map((action, index) => (
+            <li key={action.label} style={{ animationDelay: `${120 + index * 60}ms` }}>
+              <button
+                type="button"
+                className={`start__action ${index === 0 ? "start__action--primary" : ""}`}
+                onClick={() => void action.run()}
+              >
+                <span className="start__action-text">
+                  <span className="start__action-label">{action.label}</span>
+                  <span className="start__action-hint">{action.hint}</span>
+                </span>
+                <Kbd keys={action.keys} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
 
-      {recent.length > 0 && (
-        <>
-          <p className="start__eyebrow start__eyebrow--secondary">Recent</p>
-          <ul className="start__recent">
-            {recent.map((path) => {
-              const { name, folder } = splitPath(path);
-              return (
-                <li key={path}>
-                  <button
-                    type="button"
-                    className="start__file"
-                    title={path}
-                    onClick={() => void openStoryAt(deps, path)}
-                  >
-                    <span className="start__file-name">{name}</span>
-                    <span className="start__file-folder">{folder}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      )}
-      <SharedProjects />
+      <div className="start__work">
+        {recent.length > 0 && (
+          <div className="start__panel">
+            <p className="start__eyebrow start__eyebrow--secondary">Recent</p>
+            <ul className="start__recent">
+              {recent.map((path) => {
+                const { name, folder } = splitPath(path);
+                return (
+                  <li key={path}>
+                    <button
+                      type="button"
+                      className="start__file"
+                      title={path}
+                      onClick={() => void openStoryAt(deps, path)}
+                    >
+                      <span className="start__file-name">{name}</span>
+                      <span className="start__file-folder">{folder}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+        <SharedProjects />
+      </div>
       {joining && (
         <JoinDialog
           onClose={() => {

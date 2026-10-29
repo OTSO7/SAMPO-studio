@@ -1068,3 +1068,62 @@ body.is-resizing * {
   padding: var(--space-3) var(--space-5) var(--space-4);
   border-top: 1px solid var(--hairline);
 }
+
+/* ---------- start screen layout ---------- */
+
+.start__side {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+}
+
+/* Actions stay compact: they are used once, the stories next to them every day. */
+.start__action {
+  padding: var(--space-3) var(--space-4);
+}
+
+.start__work {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.start__work:empty {
+  display: none;
+}
+
+/* Each list in its own frame, scrolling inside it, so a long list never pushes the other away. */
+.start__panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: min(42vh, 420px);
+  padding: var(--space-3) var(--space-4) var(--space-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--ink-raised) 60%, transparent);
+}
+
+.start__panel .start__eyebrow--secondary {
+  margin: 0 0 var(--space-2);
+}
+
+.start__panel .start__recent {
+  overflow-y: auto;
+  margin: 0 calc(-1 * var(--space-2));
+  padding: 0 var(--space-2);
+}
+
+/* Wide windows: two columns, side by side, using the width instead of scrolling. */
+@media (min-width: 980px) {
+  .start:has(.start__work:not(:empty)) {
+    grid-template-columns: minmax(300px, 380px) minmax(0, 520px);
+    align-items: start;
+    gap: var(--space-8);
+    width: min(1000px, calc(100% - 2 * var(--space-6)));
+  }
+
+  .start:has(.start__work:not(:empty)) .start__work {
+    padding-top: calc(var(--text-display) * 1.05 + var(--space-5) + var(--space-3));
+  }
+}
