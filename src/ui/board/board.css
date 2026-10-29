@@ -2749,7 +2749,15 @@ body.is-resizing-rows * {
 
 /* ---------- sound effects: soundboard pads ---------- */
 
+.pad-wrap {
+  display: flex;
+  gap: var(--space-2);
+  align-items: stretch;
+}
+
 .pad {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -2834,4 +2842,69 @@ body.is-resizing-rows * {
 .sound-role button[aria-pressed="true"] {
   background: var(--ink-overlay);
   color: var(--bone);
+}
+
+.pad-wrap.is-playing .pad {
+  border-color: var(--signal);
+}
+
+/* How far the effect has got: a bar along the bottom of the pad, run by the compositor. */
+.pad__progress {
+  position: absolute;
+  inset: auto 0 0;
+  height: 3px;
+  background: var(--signal);
+  transform-origin: left;
+  animation: pad-progress linear forwards;
+}
+
+@keyframes pad-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.pad__stop {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 52px;
+  padding: 0;
+  border: 1px solid var(--signal);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--signal) 18%, var(--ink-raised));
+  color: var(--bone);
+  cursor: pointer;
+  animation: pad-stop-in var(--duration-fast) var(--ease-out);
+}
+
+.pad__stop:hover {
+  background: color-mix(in srgb, var(--signal) 30%, var(--ink-raised));
+}
+
+.pad__stop:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+
+.pad__stop svg {
+  width: 14px;
+  height: 14px;
+  fill: currentcolor;
+}
+
+@keyframes pad-stop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pad__stop {
+    animation: none;
+  }
 }

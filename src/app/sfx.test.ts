@@ -111,4 +111,26 @@ describe("sound effects", () => {
     await sfx.playSfx("asset://hit.wav");
     expect(playback.playback.getState().url).toBeNull();
   });
+
+  it("stops one long effect on request, leaving the others and showing what still plays", async () => {
+    await sfx.playSfx("asset://long.wav");
+    await sfx.playSfx("asset://short.wav");
+    expect(Object.keys(sfx.sfxPlaying.getState().hits).sort()).toEqual([
+      "asset://long.wav",
+      "asset://short.wav",
+    ]);
+
+    sfx.stopSfx("asset://long.wav");
+
+    expect(FakeContext.sources[0]?.stopped).toBe(true);
+    expect(FakeContext.sources[1]?.stopped).toBe(false);
+    expect(Object.keys(sfx.sfxPlaying.getState().hits)).toEqual(["asset://short.wav"]);
+    sfx.stopAllSfx();
+    expect(sfx.sfxPlaying.getState().hits).toEqual({});
+  });
+
+  it("knows how long an effect is once decoded, for the progress bar", async () => {
+    await sfx.playSfx("asset://hit.wav");
+    expect(sfx.sfxLength("asset://hit.wav")).toBe(0.3);
+  });
 });
