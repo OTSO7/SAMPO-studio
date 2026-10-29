@@ -3,6 +3,20 @@
 What is new in each version of SAMPO Studio. The app shows the latest entries after it
 updates; click the version number in the bottom corner to read them again.
 
+## 0.6.3 — 2026-10-29
+
+A cleaner look for the start screen and focus mode.
+
+### Changed
+
+- The start screen is simpler. Start a new story with the one highlighted button, and find
+  your recent stories and shared projects in tidy lists next to it. Long lists show the first
+  five, with a button to see the rest.
+- Cards in focus mode are easier to read. Each card shows its number, type, tension and status
+  in one quiet line at the top, then its heading, then the story.
+- The buttons for adding text, lines, pictures and sounds now appear only when you click into
+  a card, so the cards stay clean while you present.
+
 ## 0.6.2 — 2026-10-29
 
 A fix for sound effects.
