@@ -66,10 +66,23 @@ afterEach(() => {
 });
 
 describe("sound effects", () => {
-  it("can be hammered: every hit plays, on top of the last", async () => {
-    await Promise.all(Array.from({ length: 10 }, () => sfx.playSfx("asset://hit.wav")));
+  it("can be hammered: every hit starts it again, and it is only ever heard once", async () => {
+    for (let hit = 0; hit < 10; hit++) await sfx.playSfx("asset://hit.wav");
     expect(FakeContext.started).toBe(10);
-    expect(sfx.sfxVoices()).toBe(10);
+    expect(sfx.sfxVoices()).toBe(1);
+    expect(FakeContext.sources.slice(0, 9).every((source) => source.stopped)).toBe(true);
+    expect(FakeContext.sources[9]?.stopped).toBe(false);
+  });
+
+  it("restarts even when hits come faster than the first decode", async () => {
+    await Promise.all(Array.from({ length: 10 }, () => sfx.playSfx("asset://hit.wav")));
+    expect(sfx.sfxVoices()).toBe(1);
+  });
+
+  it("lets different effects sound together", async () => {
+    await sfx.playSfx("asset://punch.wav");
+    await sfx.playSfx("asset://crowd.wav");
+    expect(sfx.sfxVoices()).toBe(2);
   });
 
   it("decodes each effect once, however often it is hit", async () => {
@@ -77,8 +90,8 @@ describe("sound effects", () => {
     expect(FakeContext.decodes).toBe(1);
   });
 
-  it("never piles up more than 24 sounds: the oldest makes room", async () => {
-    for (let hit = 0; hit < 100; hit++) await sfx.playSfx("asset://hit.wav");
+  it("never piles up more than 24 effects: the oldest makes room", async () => {
+    for (let hit = 0; hit < 100; hit++) await sfx.playSfx(`asset://effect-${hit}.wav`);
     expect(FakeContext.started).toBe(100);
     expect(sfx.sfxVoices()).toBe(24);
     expect(FakeContext.sources.filter((source) => source.stopped)).toHaveLength(76);

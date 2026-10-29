@@ -3,8 +3,8 @@ import { useEffect, useRef } from "react";
 import { playSfx, preloadSfx } from "@app/sfx";
 
 /**
- * A soundboard pad: press it and the effect plays, press again and again and every hit plays
- * on top of the last. It fires on the press itself, not the release, so it keeps time with
+ * A soundboard pad: press it and the effect plays, press again and it starts over from the
+ * beginning, as often as you like, heard once each time. It fires on the press itself, not the release, so it keeps time with
  * a finger; Enter and Space hit it too, and holding a key repeats.
  */
 export function SfxPad({
@@ -41,7 +41,7 @@ export function SfxPad({
       type="button"
       className={`pad ${large ? "pad--large" : ""}`}
       aria-label={`Play effect ${label}`}
-      title="Hit to play; hit again to layer it"
+      title="Hit to play; hit again to start it over"
       onPointerDown={(event) => {
         if (event.button !== 0) return;
         hit();

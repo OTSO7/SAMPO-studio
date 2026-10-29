@@ -54,7 +54,7 @@ export interface AudioBlock {
   readonly text: string;
   /**
    * Music (absent, the default) plays one track at a time with a full player. `"sfx"` is an
-   * effect, a soundboard pad that can be hit again and again, each hit on top of the last.
+   * effect, a soundboard pad that can be hit again and again, each hit starting it over.
    * Absent rather than `"music"`, so files stay as older versions wrote and read them.
    */
   readonly role?: SoundRole;

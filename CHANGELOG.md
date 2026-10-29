@@ -10,7 +10,7 @@ Built for playing live: faster saves, steadier sound, and sound effects.
 ### Highlights
 
 - Sound effects: add a sound as SFX and it becomes a soundboard pad you can hit as fast as you
-  like, every hit on top of the last. Music stays one track at a time.
+  like, each hit starting it over from the beginning. Music stays one track at a time.
 - A now-playing deck that keeps the music going when you change page, with a waveform you can
   press or drag through. Drag the deck anywhere; it snaps back to its corner.
 - Saving a story with gigabytes of music now takes as long as saving its text, and the version
@@ -22,8 +22,8 @@ Built for playing live: faster saves, steadier sound, and sound effects.
 ### Added
 
 - Music and SFX: `+ Music` and `+ SFX` on every card, and a switch on each sound to change
-  which it is. Effects play through their own channel and never interrupt the music; at most
-  24 overlap, the oldest making room.
+  which it is. Effects play through their own channel and never interrupt the music; each hit
+  restarts its effect, and different effects can sound together.
 - Now playing: the sound that is on keeps playing across pages, the card panel and focus mode,
   until you stop it. Back to the start, pause and stop on the deck and in every player.
 - Waveforms for music, measured once per track and remembered; the played part fills in as it

@@ -557,7 +557,7 @@ export function ScriptEditor({
           </button>
           <button
             type="button"
-            title="A sound effect as a soundboard pad: hit it as often as you like, each hit on top of the last"
+            title="A sound effect as a soundboard pad: hit it as often as you like, each hit starts it over"
             onClick={() => {
               pickFiles("audio/*", "sfx");
             }}

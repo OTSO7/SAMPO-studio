@@ -1,22 +1,22 @@
 /**
- * Sound effects, soundboard style: every hit plays at once, on top of the hits before it,
- * so an effect can be hammered as fast as a finger goes.
+ * Sound effects, soundboard style: every hit starts the effect again from the beginning,
+ * cutting off the previous hit of the same effect, so it can be hammered as fast as a finger
+ * goes and is always heard once, never piled on itself. Different effects can sound together.
  *
  * Effects are decoded once into memory and played through Web Audio, which starts a sound in
  * a few milliseconds and mixes any number of them. They have their own audio context, apart
  * from the music player's element, so hitting effects never stops, pauses or stutters the
- * music. A cap on voices keeps a stuck key from piling up hundreds of sounds: the oldest stops
- * to make room.
+ * music. A cap on voices keeps many pads at once from piling up: the oldest stops to make room.
  */
 
 const MAX_VOICES = 24;
-/** Effects are short; a file this large is played without decoding, still overlapping. */
+/** Effects are short; a file this large plays from an element instead of decoding. */
 const MAX_DECODED_BYTES = 25 * 1024 * 1024;
 
 let context: AudioContext | null = null;
 let output: GainNode | null = null;
 const decoded = new Map<string, Promise<AudioBuffer | null>>();
-const voices: { stop: () => void }[] = [];
+const voices: { url: string; stop: () => void }[] = [];
 
 function audioContext(): { context: AudioContext; output: GainNode } | null {
   if (typeof AudioContext === "undefined") return null;
@@ -47,19 +47,27 @@ export function preloadSfx(url: string): Promise<AudioBuffer | null> {
   return job;
 }
 
-/** Plays an effect once more, over anything already sounding. */
+/** Plays an effect from the start, cutting off its previous hit if that is still sounding. */
 export async function playSfx(url: string): Promise<void> {
   const audio = audioContext();
   if (audio === null) return;
   // Browsers start audio contexts suspended until a person interacts; a hit is that.
   if (audio.context.state === "suspended") await audio.context.resume();
   const buffer = await preloadSfx(url);
+  // Stopped after the decode wait, so the newest hit always wins even when two race.
+  for (const voice of voices.filter((v) => v.url === url)) voice.stop();
   if (voices.length >= MAX_VOICES) voices.shift()?.stop();
 
   if (buffer === null) {
-    // Too large or not decodable here: an element of its own per hit still overlaps.
+    // Too large or not decodable here: an element plays it, restarting the same way.
     const element = new Audio(url);
-    const voice = { stop: () => element.pause() };
+    const voice = {
+      url,
+      stop: () => {
+        element.pause();
+        forget(voice);
+      },
+    };
     voices.push(voice);
     element.addEventListener("ended", () => forget(voice), { once: true });
     await element.play().catch(() => forget(voice));
@@ -69,7 +77,9 @@ export async function playSfx(url: string): Promise<void> {
   source.buffer = buffer;
   source.connect(audio.output);
   const voice = {
+    url,
     stop: () => {
+      forget(voice);
       try {
         source.stop();
       } catch {
@@ -92,7 +102,7 @@ export function sfxVoices(): number {
   return voices.length;
 }
 
-function forget(voice: { stop: () => void }): void {
+function forget(voice: { url: string; stop: () => void }): void {
   const at = voices.indexOf(voice);
   if (at !== -1) voices.splice(at, 1);
 }
