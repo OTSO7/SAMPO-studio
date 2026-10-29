@@ -3,6 +3,15 @@
 What is new in each version of SAMPO Studio. The app shows the latest entries after it
 updates; click the version number in the bottom corner to read them again.
 
+## 0.6.2 — 2026-10-29
+
+A fix for sound effects.
+
+### Fixed
+
+- A long sound effect can now be stopped. While an effect plays, a stop button appears next to
+  it and a bar shows how far it has got. Pressing Esc on the effect stops it too.
+
 ## 0.6.1 — 2026-10-29
 
 A small update: the notes about what changed in 0.6.0 are now easier to read.
