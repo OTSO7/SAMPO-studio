@@ -173,110 +173,6 @@
   color: var(--bone-faint);
 }
 
-.start {
-  display: grid;
-  gap: var(--space-5);
-  width: 320px;
-  animation: start-in var(--duration-slow) var(--ease-out) both;
-}
-
-.start__eyebrow {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  color: var(--ochre-text);
-}
-
-.start__actions {
-  display: grid;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.start__action {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  width: 100%;
-  padding: var(--space-4) var(--space-4);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-  background: var(--ink-raised);
-  text-align: left;
-  color: var(--bone);
-  cursor: pointer;
-  transition:
-    border-color var(--duration-fast) var(--ease-out),
-    background-color var(--duration-fast) var(--ease-out),
-    transform var(--duration-base) var(--ease-out),
-    box-shadow var(--duration-base) var(--ease-out);
-}
-
-.start__action:hover {
-  border-color: var(--hairline-strong);
-  background: var(--ink-overlay);
-  box-shadow: 0 10px 28px rgb(0 0 0 / 40%);
-  transform: translateY(-2px);
-}
-
-.start__action:active {
-  transform: translateY(0) scale(0.99);
-}
-
-.start__action:hover .kbd {
-  color: var(--bone-muted);
-}
-
-.start__action--primary {
-  border-color: var(--ochre);
-  background: var(--ochre-wash);
-}
-
-.start__action--primary:hover {
-  border-color: var(--ochre-text);
-  background: rgb(169 102 9 / 24%);
-  box-shadow: 0 10px 32px rgb(169 102 9 / 22%);
-}
-
-.start__action-text {
-  display: grid;
-  gap: 2px;
-}
-
-.start__action-label {
-  font-size: var(--text-md);
-  font-weight: 500;
-}
-
-.start__action-hint {
-  font-size: var(--text-sm);
-  color: var(--bone-faint);
-}
-
-.start__hero {
-  display: grid;
-  justify-items: start;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-}
-
-.start__title {
-  margin: 0;
-  font-family: var(--font-story);
-  font-size: var(--text-display);
-  font-weight: 500;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
-}
-
-.start__actions li {
-  animation: start-in var(--duration-slow) var(--ease-out) both;
-}
-
 /* Notices float above the status bar so they never shift the layout. */
 .notice {
   position: fixed;
@@ -491,56 +387,6 @@ body.is-resizing * {
     opacity: 0;
     transform: translateY(6px) scale(0.98);
   }
-}
-
-/* ---------- start screen: recent files ---------- */
-
-.start {
-  width: min(480px, calc(100% - 2 * var(--space-5)));
-}
-
-.start__eyebrow--secondary {
-  margin-top: var(--space-4);
-  color: var(--bone-faint);
-}
-
-.start__recent {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.start__file {
-  display: grid;
-  gap: 2px;
-  width: 100%;
-  padding: var(--space-2) var(--space-2);
-  margin: 0 calc(-1 * var(--space-2));
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: none;
-  text-align: left;
-  cursor: pointer;
-}
-
-.start__file:hover {
-  background: var(--ink-raised);
-}
-
-.start__file-name {
-  font-family: var(--font-story);
-  font-size: var(--text-md);
-  color: var(--bone);
-}
-
-.start__file-folder {
-  overflow: hidden;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  color: var(--bone-faint);
 }
 
 .shell__status-button {
@@ -1069,23 +915,160 @@ body.is-resizing * {
   border-top: 1px solid var(--hairline);
 }
 
-/* ---------- start screen layout ---------- */
+/* ---------- start screen ---------- */
+
+.start {
+  display: grid;
+  gap: var(--space-7);
+  width: min(920px, calc(100% - 2 * var(--space-6)));
+  padding: var(--space-8) 0;
+  animation: start-in var(--duration-slow) var(--ease-out) both;
+}
+
+.start__hero {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.start__title {
+  margin: 0;
+  font-family: var(--font-story);
+  font-size: var(--text-display);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--bone);
+}
+
+.start__tagline {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--bone-faint);
+}
+
+.start__body {
+  display: grid;
+  gap: var(--space-7);
+}
+
+/* Starting something new on the left, carrying on with your stories on the right. */
+@media (min-width: 860px) {
+  .start__body:has(.start__work:not(:empty)) {
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: var(--space-8);
+  }
+}
 
 .start__side {
   display: grid;
   align-content: start;
-  gap: var(--space-5);
+  gap: var(--space-3);
 }
 
-/* Actions stay compact: they are used once, the stories next to them every day. */
-.start__action {
-  padding: var(--space-3) var(--space-4);
+/* The one thing to do first, in the accent colour; everything else is quiet. */
+.start__primary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 44px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--ochre);
+  font: inherit;
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.start__primary:hover {
+  background: var(--ochre-text);
+}
+
+.start__primary:active {
+  transform: scale(0.98);
+}
+
+.start__primary .kbd {
+  margin-left: auto;
+  border-color: rgb(0 0 0 / 25%);
+  color: rgb(0 0 0 / 55%);
+}
+
+.start__links,
+.start__list {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.start__link,
+.start__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 38px;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  color: var(--bone-muted);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.start__link:hover,
+.start__row:hover,
+.start__link:focus-visible,
+.start__row:focus-visible {
+  background: var(--ink-raised);
+  color: var(--bone);
+  outline: none;
+}
+
+.start__link-label {
+  flex: 1;
+}
+
+.start__link .kbd {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+/* Shortcuts show where the pointer is, so the list reads clean at rest. */
+.start__link:hover .kbd,
+.start__link:focus-visible .kbd {
+  opacity: 1;
+}
+
+.start__icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
 }
 
 .start__work {
   display: grid;
   align-content: start;
-  gap: var(--space-4);
+  gap: var(--space-6);
   min-width: 0;
 }
 
@@ -1093,37 +1076,60 @@ body.is-resizing * {
   display: none;
 }
 
-/* Each list in its own frame, scrolling inside it, so a long list never pushes the other away. */
-.start__panel {
+.start__section {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  max-height: min(42vh, 420px);
-  padding: var(--space-3) var(--space-4) var(--space-2);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--ink-raised) 60%, transparent);
+  gap: var(--space-2);
+  animation: start-in var(--duration-slow) var(--ease-out) both;
+  animation-delay: 80ms;
 }
 
-.start__panel .start__eyebrow--secondary {
-  margin: 0 0 var(--space-2);
+.start__heading {
+  margin: 0 0 var(--space-1) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--bone-faint);
 }
 
-.start__panel .start__recent {
-  overflow-y: auto;
-  margin: 0 calc(-1 * var(--space-2));
-  padding: 0 var(--space-2);
+.start__row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-md);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--bone);
 }
 
-/* Wide windows: two columns, side by side, using the width instead of scrolling. */
-@media (min-width: 980px) {
-  .start:has(.start__work:not(:empty)) {
-    grid-template-columns: minmax(300px, 380px) minmax(0, 520px);
-    align-items: start;
-    gap: var(--space-8);
-    width: min(1000px, calc(100% - 2 * var(--space-6)));
-  }
+.start__row-meta {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--bone-faint);
+}
 
-  .start:has(.start__work:not(:empty)) .start__work {
-    padding-top: calc(var(--text-display) * 1.05 + var(--space-5) + var(--space-3));
-  }
+.start__more {
+  justify-self: start;
+  margin-left: var(--space-3);
+  padding: var(--space-1) 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--text-xs);
+  color: var(--bone-faint);
+  cursor: pointer;
+}
+
+.start__more:hover {
+  color: var(--bone);
+}
+
+/* Nothing to carry on with yet: one narrow, centred column. */
+.start:has(.start__work:empty) {
+  width: min(360px, calc(100% - 2 * var(--space-6)));
 }

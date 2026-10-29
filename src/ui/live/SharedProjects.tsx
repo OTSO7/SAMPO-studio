@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { openProject, peekProject, removeProjectFromList } from "@app/live/project";
 import { projects, type ProjectRecord } from "@app/live/projects";
 import { useStore } from "@ui/hooks/use-store";
+import { Icon, LIST_LIMIT } from "@ui/primitives/StartIcon";
 import { useServices } from "@ui/services/use-services";
 
 import "./live.css";
@@ -42,64 +43,84 @@ export function SharedProjects() {
   const { deps } = useServices();
   const list = useStore(projects, (s) => s.list);
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const ready = list.filter((record) => record.storyId !== "");
   const here = useWhoIsHere(ready);
   if (ready.length === 0) return null;
+  const shown = showAll ? ready : ready.slice(0, LIST_LIMIT);
 
   return (
-    <div className="start__panel">
-      <p className="start__eyebrow start__eyebrow--secondary">Shared</p>
-      <ul className="start__recent">
-        {ready.map((record) => (
-          <li key={record.id} className="shared__item">
-            <button
-              type="button"
-              className="start__file"
-              onClick={() => void openProject(deps, record)}
-            >
-              <span className="start__file-name">
-                {record.title || "Untitled"}
-                <span className="shared__badge">Shared</span>
-              </span>
-              <span className="start__file-folder">
-                {record.role === "owner" ? "You own this" : `Owner: ${record.ownerName || "?"}`} ·
-                opened {opened.format(record.openedAt)}
-              </span>
-              {(here.get(record.id)?.length ?? 0) > 0 && (
-                <span className="shared__here">
-                  <span className="live__dot" aria-hidden="true" />
-                  Working now: {here.get(record.id)?.join(", ")}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              className="shared__more"
-              aria-label={`More for ${record.title || "Untitled"}`}
-              aria-haspopup="menu"
-              aria-expanded={menuFor === record.id}
-              onMouseDown={(event) => {
-                // Keeps this click from counting as a click outside the open menu.
-                event.stopPropagation();
-              }}
-              onClick={() => {
-                setMenuFor(menuFor === record.id ? null : record.id);
-              }}
-            >
-              ⋯
-            </button>
-            {menuFor === record.id && (
-              <ProjectMenu
-                record={record}
-                onClose={() => {
-                  setMenuFor(null);
+    <section className="start__section" aria-label="Shared projects">
+      <h2 className="start__heading">Shared</h2>
+      <ul className="start__list">
+        {shown.map((record) => {
+          const working = here.get(record.id) ?? [];
+          return (
+            <li key={record.id} className="shared__item">
+              <button
+                type="button"
+                className="start__row"
+                title={
+                  record.role === "owner"
+                    ? "You own this project"
+                    : `${record.ownerName || "?"}'s project`
+                }
+                onClick={() => void openProject(deps, record)}
+              >
+                <Icon name="people" />
+                <span className="start__row-name">{record.title || "Untitled"}</span>
+                {working.length > 0 ? (
+                  <span className="start__row-meta shared__here">
+                    <span className="live__dot" aria-hidden="true" />
+                    {working.join(", ")} now
+                  </span>
+                ) : (
+                  <span className="start__row-meta">
+                    {record.role === "owner" ? "Yours" : record.ownerName || "?"} ·{" "}
+                    {opened.format(record.openedAt)}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                className="shared__more"
+                aria-label={`More for ${record.title || "Untitled"}`}
+                aria-haspopup="menu"
+                aria-expanded={menuFor === record.id}
+                onMouseDown={(event) => {
+                  // Keeps this click from counting as a click outside the open menu.
+                  event.stopPropagation();
                 }}
-              />
-            )}
-          </li>
-        ))}
+                onClick={() => {
+                  setMenuFor(menuFor === record.id ? null : record.id);
+                }}
+              >
+                ⋯
+              </button>
+              {menuFor === record.id && (
+                <ProjectMenu
+                  record={record}
+                  onClose={() => {
+                    setMenuFor(null);
+                  }}
+                />
+              )}
+            </li>
+          );
+        })}
       </ul>
-    </div>
+      {ready.length > LIST_LIMIT && (
+        <button
+          type="button"
+          className="start__more"
+          onClick={() => {
+            setShowAll((all) => !all);
+          }}
+        >
+          {showAll ? "Show fewer" : `Show all ${ready.length}`}
+        </button>
+      )}
+    </section>
   );
 }
 

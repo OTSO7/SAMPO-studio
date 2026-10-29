@@ -311,19 +311,6 @@
 
 /* ---------- start screen and history ---------- */
 
-.shared__badge {
-  margin-left: var(--space-2);
-  padding: 0 6px;
-  border: 1px solid var(--ochre);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  vertical-align: middle;
-  color: var(--ochre-text);
-}
-
 .history {
   display: grid;
   gap: var(--space-1);
@@ -416,7 +403,7 @@
   align-items: center;
 }
 
-.shared__item .start__file {
+.shared__item .start__row {
   flex: 1;
   min-width: 0;
 }
@@ -454,7 +441,7 @@
 }
 
 .shared__here {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   font-size: var(--text-xs);
