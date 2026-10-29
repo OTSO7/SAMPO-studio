@@ -940,12 +940,6 @@ body.is-resizing * {
   color: var(--bone);
 }
 
-.start__tagline {
-  margin: 0;
-  font-size: var(--text-md);
-  color: var(--bone-faint);
-}
-
 .start__body {
   display: grid;
   gap: var(--space-7);

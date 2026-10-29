@@ -277,16 +277,17 @@ function FocusCard({
 }) {
   return (
     <article className="focus-card" data-swatch={swatch} data-beat-id={beat.id}>
+      {/* What the card is, in one quiet line; then its heading; then the story itself. */}
       <header className="focus-card__head">
         <span className="focus-card__number">{number}</span>
-        <HeadingInput beat={beat} edit={edit} className="focus-card__heading" />
-      </header>
-      <ScriptEditor beat={beat} story={story} edit={edit} size="large" autoFocus={autoFocus} />
-      <footer className="focus-card__foot">
         <CardTypePicker beat={beat} story={story} edit={edit} />
-        <StatusPicker beat={beat} edit={edit} />
-        <TensionPicker beat={beat} edit={edit} />
-      </footer>
+        <span className="focus-card__meta">
+          <TensionPicker beat={beat} edit={edit} />
+          <StatusPicker beat={beat} edit={edit} />
+        </span>
+      </header>
+      <HeadingInput beat={beat} edit={edit} className="focus-card__heading" />
+      <ScriptEditor beat={beat} story={story} edit={edit} size="large" autoFocus={autoFocus} />
     </article>
   );
 }

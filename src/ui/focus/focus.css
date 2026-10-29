@@ -125,9 +125,11 @@
 
 .focus-card__head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-3);
   min-width: 0;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--hairline);
 }
 
 .focus-card__number {
@@ -156,16 +158,6 @@
 .focus-card__heading:focus {
   border-bottom-color: var(--ochre);
   outline: none;
-}
-
-.focus-card__foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--hairline);
 }
 
 /* Presenting needs larger text than editing. */
@@ -331,4 +323,115 @@
 /* Room to scroll the last card above the now-playing deck in the bottom left corner. */
 .focus__stage {
   padding-bottom: 150px;
+}
+
+/* ---------- focus card: read first, edit when you reach in ---------- */
+
+.focus-card {
+  gap: var(--space-3);
+}
+
+/* One left edge for everything: past the script's grip column, border and text inset. */
+.focus-card__head,
+.focus-card__heading {
+  margin-left: 41px;
+}
+
+/* Card details as compact chips in the header, in one quiet style. */
+.focus-card__head .type-select {
+  height: 24px;
+  border-color: transparent;
+  background: none;
+  font-size: var(--text-xs);
+}
+
+.focus-card__head .type-select:hover,
+.focus-card__head .type-select:focus-within {
+  border-color: var(--hairline-strong);
+}
+
+.focus-card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+
+.focus-card__meta .tension-field {
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.focus-card__meta .tension {
+  flex: none;
+  width: 56px;
+  height: 14px;
+  gap: 2px;
+}
+
+.focus-card__meta .tension-field__value {
+  display: none;
+}
+
+.focus-card__meta .status-picker {
+  border-color: transparent;
+}
+
+.focus-card__meta .status-picker__item {
+  height: 22px;
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--bone-faint);
+}
+
+.focus-card__meta .status-picker__item + .status-picker__item {
+  border-left-color: transparent;
+}
+
+/* Only the status the card has shows at rest; the others appear to change it. */
+.focus-card__meta .status-picker__item:not([aria-checked="true"]) {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.focus-card:hover .focus-card__meta .status-picker__item,
+.focus-card:focus-within .focus-card__meta .status-picker__item {
+  opacity: 1;
+}
+
+/* An empty heading takes no room until you are writing in the card. */
+.focus-card__heading:placeholder-shown:not(:focus) {
+  display: none;
+}
+
+.focus-card:focus-within .focus-card__heading:placeholder-shown {
+  display: block;
+  opacity: 1;
+}
+
+/* Adding blocks and the keyboard help are for editing: shown once you are in the card. */
+.focus-card .script__add {
+  display: none;
+}
+
+.focus-card:focus-within .script__add {
+  display: flex;
+}
+
+.focus-card .script__hint {
+  display: none;
+}
+
+/* A sound's kind and remove button appear on the sound you point at. */
+.focus-card .sound-role,
+.focus-card .script__caption-row .script__tool--danger {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.focus-card .script__block:hover .sound-role,
+.focus-card .script__block:focus-within .sound-role,
+.focus-card .script__block:hover .script__tool--danger,
+.focus-card .script__block:focus-within .script__tool--danger {
+  opacity: 1;
 }

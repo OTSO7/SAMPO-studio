@@ -72,7 +72,6 @@ export function StartScreen() {
     <section className="start" aria-label="Start">
       <header className="start__hero">
         <h1 className="start__title">SAMPO Studio</h1>
-        <p className="start__tagline">Plan the story. Play it live.</p>
       </header>
 
       <div className="start__body">
