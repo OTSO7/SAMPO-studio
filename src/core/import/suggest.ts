@@ -32,7 +32,7 @@ const NUMBERED_HEADING = new RegExp(
   "iu",
 );
 /** "# Title", "## Section" */
-const MARKDOWN_HEADING = /^(#{1,3})\s+(.+)$/u;
+const MARKDOWN_HEADING = /^(#{1,6})\s+(.+)$/u;
 /** Screenplay scene headings: "INT. CABIN - NIGHT" */
 const SLUGLINE = /^((?:INT|EXT|I\/E|INT\.\/EXT)\.?\s+.+)$/u;
 const LOCATION = /^(?:location|setting|place|tapahtumapaikka|paikka|sijainti)\s*:\s*(.+)$/iu;
@@ -48,9 +48,20 @@ type Line =
   | { kind: "line"; speaker: string; text: string; raw: string };
 
 const MAX_SPEAKER_WORDS = 3;
+/** Text with fewer headings than this is not treated as a structured document. */
+const MIN_OUTLINE_HEADINGS = 3;
+/** So many headings before the first "Act I" means it is a section, not how the text divides. */
+const MIN_HEADINGS_BEFORE_PHASE = 3;
+const MAX_HEADING_LENGTH = 70;
+const MAX_HEADING_WORDS = 8;
+const MIN_PROSE_LENGTH = 30;
 
 export function suggestRows(text: string): ImportRow[] {
-  const lines = segmentText(text).map(classify);
+  const raw = segmentText(text);
+  const outline = headedOutline(raw) ?? plainOutline(raw);
+  if (outline !== null) return outline;
+
+  const lines = raw.map(classify);
   const structured = lines.some((line) => line.kind === "phase");
   const boilerplate = findBoilerplateLabels(lines);
 
@@ -97,6 +108,84 @@ export function suggestRows(text: string): ImportRow[] {
     }
   });
   return rows;
+}
+
+/**
+ * A document with headings on more than one level, such as a design document: the top level
+ * makes phases, the levels below make cards, and everything under a heading stays on its card.
+ * With one level only, the text is more like a script: `null` leaves it to the rules below.
+ */
+function headedOutline(raw: readonly string[]): ImportRow[] | null {
+  const levelOf = (line: string) => MARKDOWN_HEADING.exec(line)?.[1]?.length ?? null;
+  const titled = raw[0] !== undefined && levelOf(raw[0]) !== null;
+  const levels = raw
+    .slice(titled ? 1 : 0)
+    .map(levelOf)
+    .filter((level) => level !== null);
+  if (new Set(levels).size < 2) return null;
+  const top = Math.min(...levels);
+
+  return raw.map((line, index): ImportRow => {
+    const level = levelOf(line);
+    const heading = MARKDOWN_HEADING.exec(line)?.[2]?.trim() ?? "";
+    if (level === null) return bodyRow(line);
+    if (index === 0) return { role: "title", text: heading };
+    return level === top
+      ? { role: "phase", text: heading }
+      : { role: "beat", label: heading, text: "" };
+  });
+}
+
+/**
+ * The same kind of document pasted as plain text, where headings can only be told by their
+ * shape: a short line with no sentence ending, followed by prose. Several short lines in a row
+ * are a table or a list, not headings. `null` for anything else, which is how a script stays
+ * a script.
+ */
+function plainOutline(raw: readonly string[]): ImportRow[] | null {
+  const short = (line: string | undefined) =>
+    line !== undefined &&
+    line.length <= MAX_HEADING_LENGTH &&
+    line.split(" ").length <= MAX_HEADING_WORDS &&
+    !/[.!?…;,]$/u.test(line) &&
+    classify(line).kind !== "line";
+  const prose = (line: string | undefined) =>
+    line !== undefined &&
+    line.length >= MIN_PROSE_LENGTH &&
+    // A sentence may end in an emoji.
+    (/[.!?…:)]\P{L}*$/u.test(line) || line.length >= 2 * MIN_PROSE_LENGTH);
+  const isHeading = raw.map(
+    (line, index) =>
+      short(line) &&
+      prose(raw[index + 1]) &&
+      // The end of a run of short lines is a table's last cell; the document's top is not a run.
+      !(index > 2 && short(raw[index - 1]) && short(raw[index - 2])),
+  );
+
+  const headings = isHeading.filter(Boolean).length;
+  const spoken = raw.filter((line) => classify(line).kind === "line").length;
+  const firstPhase = raw.findIndex((line) => classify(line).kind === "phase");
+  const beforePhase = isHeading.slice(0, Math.max(firstPhase, 0)).filter(Boolean).length;
+  if (
+    headings < MIN_OUTLINE_HEADINGS ||
+    spoken > headings ||
+    (firstPhase !== -1 && beforePhase < MIN_HEADINGS_BEFORE_PHASE)
+  ) {
+    return null;
+  }
+
+  return raw.map((line, index): ImportRow => {
+    if (index === 0 && short(line)) return { role: "title", text: line };
+    if (isHeading[index]) return { role: "beat", label: line.replace(/:$/u, ""), text: "" };
+    return bodyRow(line);
+  });
+}
+
+function bodyRow(line: string): ImportRow {
+  const parsed = classify(line);
+  return parsed.kind === "line"
+    ? { role: "line", speaker: parsed.speaker, text: parsed.text }
+    : { role: "text", text: line };
 }
 
 function classify(line: string): Line {

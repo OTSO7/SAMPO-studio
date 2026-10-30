@@ -121,4 +121,66 @@ describe("suggestRows with other kinds of documents", () => {
       { role: "beat", text: "D happens." },
     ]);
   });
+
+  it("keeps a document with heading levels together: phases, cards and their text", () => {
+    const rows = suggestRows(
+      "# Pelin nimi\n\nOtto\n\n## Hahmot\n\nKaikki hahmot.\n\n### Aatos\n\nKonstaapeli.\n\nLuonne: hiljainen.\n\n• Kuiva huumori\n\n### Elias\n\nTaiteilija.\n\n## Maailma\n\nSuomi 1984.",
+    );
+    expect(rows).toEqual([
+      { role: "title", text: "Pelin nimi" },
+      { role: "text", text: "Otto" },
+      { role: "phase", text: "Hahmot" },
+      { role: "text", text: "Kaikki hahmot." },
+      { role: "beat", label: "Aatos", text: "" },
+      { role: "text", text: "Konstaapeli." },
+      { role: "text", text: "Luonne: hiljainen." },
+      { role: "text", text: "• Kuiva huumori" },
+      { role: "beat", label: "Elias", text: "" },
+      { role: "text", text: "Taiteilija." },
+      { role: "phase", text: "Maailma" },
+      { role: "text", text: "Suomi 1984." },
+    ]);
+  });
+
+  it("finds the headings of a plain text document by their shape", () => {
+    const rows = suggestRows(
+      [
+        "Design Document",
+        "Lokakuu 2026",
+        "Maailma",
+        "Peli sijoittuu lokakuun 1984 Suomeen, jossa kylmä sota tuntuu kaikessa.",
+        "Asia",
+        "Kuvaus",
+        "Lajityyppi",
+        "Kauhu",
+        "Tämä on pelin lupaus pelaajalle, ja se kannattaa pitää aina mielessä.",
+        "Hahmot",
+        "Aatos etsii, ja Elias on se, jota etsitään koko pelin ajan.",
+        "Kolme pilaria:",
+        "Kuva vetää menneisyyden nykyhetkeen ja paljastaa sen, mitä silmä ei näe.",
+      ].join("\n"),
+    );
+    expect(rows.filter((row) => row.role === "beat").map((row) => row.label)).toEqual([
+      "Maailma",
+      "Hahmot",
+      "Kolme pilaria",
+    ]);
+    expect(rows[0]).toEqual({ role: "title", text: "Design Document" });
+    // The table's cells stay text on the card before them, not cards of their own.
+    expect(rows.filter((row) => row.role === "text").map((row) => row.text)).toContain(
+      "Lajityyppi",
+    );
+  });
+
+  it("does not take a script for a document", () => {
+    const script = [
+      "Yö",
+      "Kamera liukuu jäätyneen järven yli hitaasti kohti vanhaa saunaa rannalla.",
+      "IRIS: Tulit takaisin.",
+      "MATIAS: Oli pakko.",
+      "Lyhty sammuu",
+      "Sisällä höyry peittää seinät niin, ettei mitään näy ollenkaan.",
+    ].join("\n");
+    expect(suggestRows(script).some((row) => row.role === "beat" && row.text === "")).toBe(false);
+  });
 });

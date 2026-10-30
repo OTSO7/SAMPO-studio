@@ -1,7 +1,7 @@
 import { memo, useLayoutEffect, useRef, type MouseEvent, type PointerEvent } from "react";
 
 import { mediaArrivals } from "@app/live/project";
-import type { Beat } from "@core/model";
+import type { Beat, LineBlock } from "@core/model";
 import { useStore } from "@ui/hooks/use-store";
 import { useServices } from "@ui/services/use-services";
 import { MAX_PREVIEW_LINES } from "./card-preview";
@@ -69,7 +69,10 @@ export const BeatCard = memo(function BeatCard({
   const arrivals = useStore(mediaArrivals, (s) => s.count);
   // Every type is named: authors define them, so the first one means something too.
   const typeName = type?.name ?? null;
-  const shownLines = expanded ? lines : lines.slice(0, MAX_PREVIEW_LINES);
+  const shownLines = lines.slice(0, MAX_PREVIEW_LINES);
+  const texts = beat.blocks.filter((block) => block.type === "action").length;
+  // Sections the collapsed card leaves out; notes are counted in its footer.
+  const hiddenCount = Math.max(0, texts - 1) + (lines.length - shownLines.length);
 
   const classes = [
     "card",
@@ -137,25 +140,24 @@ export const BeatCard = memo(function BeatCard({
         />
       )}
       {beat.label !== undefined && <span className="card__label">{beat.label}</span>}
-      {lead !== "" && <span className="card__text">{lead}</span>}
-
-      {lines.length > 0 && (
-        <span className="card__dialogue">
-          {shownLines.map((line) => {
-            const speaker = line.speaker === null ? undefined : lookup.entityById.get(line.speaker);
-            return (
-              <span key={line.id} className="card__line" data-swatch={speaker?.color ?? "slate"}>
-                <span className="card__speaker">{speaker?.name ?? "—"}</span>
-                <span className="card__quote">{line.text || "…"}</span>
-              </span>
-            );
-          })}
-          {lines.length > shownLines.length && (
-            <span className="card__more" title="Right-click the card to expand it">
-              +{lines.length - shownLines.length} more lines
+      {expanded ? (
+        <CardSections beat={beat} lookup={lookup} />
+      ) : (
+        <>
+          {lead !== "" && <span className="card__text">{lead}</span>}
+          {lines.length > 0 && (
+            <span className="card__dialogue">
+              {shownLines.map((line) => (
+                <CardLine key={line.id} line={line} lookup={lookup} />
+              ))}
             </span>
           )}
-        </span>
+          {hiddenCount > 0 && (
+            <span className="card__more" title="Expand the card to see everything">
+              +{hiddenCount} more
+            </span>
+          )}
+        </>
       )}
 
       {lead === "" &&
@@ -178,9 +180,45 @@ export const BeatCard = memo(function BeatCard({
             </span>
           )}
           {takes > 0 && <span>{takes === 1 ? "1 take" : `${takes} takes`}</span>}
-          {notes > 0 && <span>{notes === 1 ? "1 note" : `${notes} notes`}</span>}
+          {notes > 0 && !expanded && <span>{notes === 1 ? "1 note" : `${notes} notes`}</span>}
         </span>
       )}
     </button>
   );
 });
+
+function CardLine({ line, lookup }: { line: LineBlock; lookup: StoryLookup }) {
+  const speaker = line.speaker === null ? undefined : lookup.entityById.get(line.speaker);
+  return (
+    <span className="card__line" data-swatch={speaker?.color ?? "slate"}>
+      <span className="card__speaker">{speaker?.name ?? "—"}</span>
+      <span className="card__quote">{line.text || "…"}</span>
+    </span>
+  );
+}
+
+/** An expanded card: everything written on it, in its order, each section set apart. */
+function CardSections({ beat, lookup }: { beat: Beat; lookup: StoryLookup }) {
+  return (
+    <span className="card__sections">
+      {beat.blocks.map((block) => {
+        if (block.type === "action" && block.text !== "") {
+          return (
+            <span key={block.id} className="card__text">
+              {block.text}
+            </span>
+          );
+        }
+        if (block.type === "line") return <CardLine key={block.id} line={block} lookup={lookup} />;
+        if (block.type === "note" && block.text !== "") {
+          return (
+            <span key={block.id} className="card__note">
+              {block.text}
+            </span>
+          );
+        }
+        return null;
+      })}
+    </span>
+  );
+}

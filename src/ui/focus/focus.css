@@ -454,3 +454,28 @@
 .focus-card .script__block:focus-within .sfx-own {
   opacity: 1;
 }
+
+/*
+ * The list reads top to bottom like a running order: one column at a reading width, with the
+ * phase title and buttons on the same edges, and clear air between cards so each is one thing.
+ */
+.focus__cards--list {
+  grid-template-columns: minmax(0, 780px);
+  gap: var(--space-8);
+}
+
+.focus__stage--list .focus__intro,
+.focus__stage--list .focus__add {
+  width: min(780px, 100%);
+  margin-inline: auto;
+}
+
+.focus__cards--list .focus-card {
+  gap: var(--space-4);
+  padding: var(--space-6);
+}
+
+/* Between the sections of one card: closer than between cards, further than between lines. */
+.focus__cards--list .script__blocks {
+  gap: var(--space-5);
+}

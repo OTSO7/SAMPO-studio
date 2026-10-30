@@ -99,7 +99,8 @@ export function assembleStory(rows: readonly ImportRow[], ids: IdFactory = newId
         const label = row.label?.trim();
         currentPhase().beats.push({
           ...(label ? { label } : {}),
-          blocks: [{ type: "action", id: ids.block(), text }],
+          // A heading alone: what follows it becomes the card's text.
+          blocks: text === "" ? [] : [{ type: "action", id: ids.block(), text }],
         });
         break;
       }

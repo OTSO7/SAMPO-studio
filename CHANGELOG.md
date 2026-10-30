@@ -3,6 +3,28 @@
 What is new in each version of SAMPO Studio. The app shows the latest entries after it
 updates; click the version number in the bottom corner to read them again.
 
+## 0.6.6 — 2026-10-30
+
+Better imports from Google Docs, and cards that show everything written on them.
+
+### New
+
+- Pasting from Google Docs or Word now keeps the document's structure. Main headings become
+  phases, smaller headings become cards, and the text, lists and tables under a heading stay
+  together on its card.
+- Documents pasted as plain text are divided by their headings too, when the app can recognise
+  them. Scripts are imported as before.
+
+### Improved
+
+- The list view in focus mode is easier to read: one column at a comfortable width, the phase
+  title lined up with the cards, and more space between cards.
+
+### Fixed
+
+- Cards with several sections of text, or a note, had no expand button. Expanding a card now
+  shows everything on it, in order, with each section set apart.
+
 ## 0.6.5 — 2026-10-30
 
 Set the volume of each sound effect, and open Settings in one click.

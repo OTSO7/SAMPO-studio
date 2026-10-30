@@ -51,7 +51,7 @@ export function useShortcuts(deps: AppDeps): void {
       if (text.trim() === "") return;
 
       event.preventDefault();
-      void importScript(deps, text);
+      void importScript(deps, text, event.clipboardData?.getData("text/html"));
     };
 
     window.addEventListener("keydown", onKeyDown);

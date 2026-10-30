@@ -23,7 +23,11 @@ export function StartScreen() {
 
   const pasteFromClipboard = async () => {
     try {
-      if (!(await importScript(deps, await navigator.clipboard.readText()))) {
+      const [item] = await navigator.clipboard.read();
+      const html = item?.types.includes("text/html")
+        ? await (await item.getType("text/html")).text()
+        : "";
+      if (!(await importScript(deps, await navigator.clipboard.readText(), html))) {
         showNotice(deps.notices, { tone: "info", title: "Clipboard is empty" });
       }
     } catch {

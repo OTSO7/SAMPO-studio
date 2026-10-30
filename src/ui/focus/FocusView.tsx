@@ -160,7 +160,7 @@ export function FocusView({ story, initialPhase = 0, onExit }: FocusViewProps) {
           <p>This story has no phases yet.</p>
         </main>
       ) : (
-        <main key={phase.id} className="focus__stage">
+        <main key={phase.id} className={`focus__stage focus__stage--${layout}`}>
           <div className="focus__intro">
             <span className="focus__eyebrow">Phase {String(index + 1).padStart(2, "0")}</span>
             <EditableText

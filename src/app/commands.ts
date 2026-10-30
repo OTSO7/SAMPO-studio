@@ -1,5 +1,5 @@
 import { collectVoiceLines, storyToMarkdown, voiceLinesToCsv } from "@core/export";
-import { assembleStory, suggestRows } from "@core/import";
+import { assembleStory, htmlToOutline, suggestRows } from "@core/import";
 import { createStory, type IdFactory } from "@core/model";
 import { FileError, type StoryFiles } from "./files";
 import type { RecentFiles } from "./recent-files";
@@ -187,8 +187,9 @@ async function applyOpen(
  * Turns pasted text into a new, unsaved story with a drafted structure that the author
  * corrects on the board. Resolves to `false` when there was nothing to import.
  */
-export async function importScript(deps: AppDeps, text: string): Promise<boolean> {
-  const rows = suggestRows(text);
+export async function importScript(deps: AppDeps, text: string, html = ""): Promise<boolean> {
+  // The HTML beside the text keeps the headings, lists and tables a word processor had.
+  const rows = suggestRows(htmlToOutline(html) ?? text);
   if (rows.length === 0) return false;
   if (!(await releaseCurrent(deps))) return false;
 

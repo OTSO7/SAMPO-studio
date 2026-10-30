@@ -2980,3 +2980,24 @@ body.is-resizing-rows * {
   flex: 1 1 120px;
   min-width: 0;
 }
+
+/* An expanded card: each section of text apart from the next, easy to read through. */
+.card__sections {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* Whitespace in pasted text is kept, so lists and paragraphs keep their shape. */
+.card__sections .card__text {
+  white-space: pre-wrap;
+}
+
+.card__note {
+  padding: var(--space-2) var(--space-3);
+  border-left: 2px solid var(--bone-faint);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: rgb(233 227 213 / 4%);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--bone-muted);
+}

@@ -9,8 +9,11 @@ const MAX_PREVIEW_CHARACTERS = 180;
 /** Whether a collapsed card hides anything, so expanding it would show more. */
 export function canExpand(beat: Beat): boolean {
   const lines = beat.blocks.filter((block) => block.type === "line");
-  const lead = beat.blocks.find((block) => block.type === "action")?.text ?? "";
+  const texts = beat.blocks.filter((block) => block.type === "action");
+  const lead = texts[0]?.text ?? "";
   return (
+    texts.length > 1 ||
+    beat.blocks.some((block) => block.type === "note") ||
     lines.length > MAX_PREVIEW_LINES ||
     lead.length > MAX_PREVIEW_CHARACTERS ||
     lines.some((line) => line.text.length > MAX_PREVIEW_CHARACTERS / 2)
