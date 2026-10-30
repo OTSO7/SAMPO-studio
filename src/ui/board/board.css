@@ -1407,7 +1407,7 @@ body.is-resizing-rows * {
 }
 
 .script__direction {
-  flex: 1 1 120px;
+  flex: 1 1 70px;
   min-width: 0;
   height: 24px;
   padding: 0 var(--space-1);
@@ -2937,4 +2937,46 @@ body.is-resizing-rows * {
   min-width: 4ch;
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+/* An effect's own volume, beside its name. */
+.sfx-own {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--bone-faint);
+  cursor: pointer;
+}
+
+.sfx-own input {
+  width: 60px;
+  margin: 0;
+  accent-color: var(--signal);
+  cursor: pointer;
+}
+
+.sfx-own__value {
+  min-width: 4ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Above the file's own level it may distort, so the number says so quietly. */
+.sfx-own__value.is-boosted {
+  color: var(--ochre-text);
+}
+
+/* A sound's name gives way first; in a narrow panel its controls wrap under it. */
+.script__block--audio .script__caption-row {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.script__block--audio .script__caption {
+  flex: 1 1 120px;
+  min-width: 0;
 }

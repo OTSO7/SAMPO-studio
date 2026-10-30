@@ -92,6 +92,7 @@ function blockToJson(block: Block) {
         text: block.text,
         src: block.src,
         ...optional("role", block.role),
+        ...optional("volume", block.volume),
       };
   }
 }

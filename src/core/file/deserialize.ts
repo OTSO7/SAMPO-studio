@@ -224,10 +224,19 @@ function readBlock(r: Reader, value: unknown, path: string): Block | undefined {
       const inline = type === "image" && String(o["src"]).startsWith("data:image/");
       const src = inline ? (o["src"] as string) : readMedia(r, o["src"], `${path}.src`);
       if (src === undefined) return undefined;
-      // Anything but a known role plays as music, so a newer file never fails to open.
-      return type === "audio" && o["role"] === "sfx"
-        ? { type, id, src, text, role: "sfx" }
-        : { type, id, src, text };
+      if (type === "image") return { type, id, src, text };
+      // Anything but a known role plays as music, and a level out of range as the file is, so a
+      // newer file never fails to open.
+      const level = o["volume"];
+      const volume = typeof level === "number" && level >= 0 && level <= 2 ? level : 1;
+      return {
+        type,
+        id,
+        src,
+        text,
+        ...(o["role"] === "sfx" ? { role: "sfx" as const } : {}),
+        ...(volume === 1 ? {} : { volume }),
+      };
     }
   }
 }

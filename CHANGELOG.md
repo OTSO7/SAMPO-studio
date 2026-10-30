@@ -3,6 +3,22 @@
 What is new in each version of SAMPO Studio. The app shows the latest entries after it
 updates; click the version number in the bottom corner to read them again.
 
+## 0.6.5 — 2026-10-30
+
+Set the volume of each sound effect, and open Settings in one click.
+
+### New
+
+- Every sound effect now has its own volume, from 0 to 200%, so you can even out loud and quiet
+  files. It is saved in the story file. Double-click the slider to return to 100%.
+
+### Changed
+
+- The Settings menu now opens the Settings window straight away.
+- The sound effect volume in Settings now sets the level of all effects together. The card
+  panel shows each effect's own volume instead.
+- Card layout has moved out of Settings. Switch it with the button in focus mode, as before.
+
 ## 0.6.4 — 2026-10-30
 
 Menus, settings saved with your story, and steadier playback for live shows.

@@ -31,6 +31,7 @@ export {
   NEW_PHASE_TITLE,
   moveBlock,
   setSoundRole,
+  setSoundVolume,
   removeBlock,
   removeCardType,
   removeEntity,

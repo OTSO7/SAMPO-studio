@@ -443,3 +443,14 @@
 .focus__top .sfx-volume + .focus__layout {
   margin-left: 0;
 }
+
+/* While presenting, a level changes only when you reach for it. */
+.focus-card .sfx-own {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.focus-card .script__block:hover .sfx-own,
+.focus-card .script__block:focus-within .sfx-own {
+  opacity: 1;
+}

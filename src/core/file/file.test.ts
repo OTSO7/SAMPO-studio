@@ -4,6 +4,7 @@ import {
   addBlock,
   addCardType,
   setSoundRole,
+  setSoundVolume,
   ensureThread,
   setLineDirection,
   setLineTake,
@@ -414,5 +415,28 @@ describe("music and sound effects", () => {
     const music = setSoundRole(story, effectId, undefined);
     expect(Object.keys(blockIn(serializeStory(music), effectId) ?? {})).not.toContain("role");
     expect(setSoundRole(music, effectId, "sfx")).toEqual(story);
+  });
+
+  it("keeps an effect's own volume in the file, and writes nothing at 100%", () => {
+    const { story, effectId } = withSounds();
+    if (effectId === null) throw new Error("not added");
+    const quieter = setSoundVolume(story, effectId, 0.45);
+    const loaded = deserializeStory(serializeStory(quieter));
+    expect(loaded.ok && loaded.story).toEqual(quieter);
+    expect(blockIn(serializeStory(quieter), effectId)?.["volume"]).toBe(0.45);
+    const reset = setSoundVolume(quieter, effectId, 1);
+    expect(reset).toEqual(story);
+    expect(serializeStory(reset)).toBe(serializeStory(story));
+  });
+
+  it("plays an out-of-range volume at 100% instead of refusing the file", () => {
+    const { story, effectId } = withSounds();
+    if (effectId === null) throw new Error("not added");
+    const text = serializeStory(setSoundVolume(story, effectId, 0.5)).replace(
+      '"volume": 0.5',
+      '"volume": 900',
+    );
+    const loaded = deserializeStory(text);
+    expect(loaded.ok && loaded.story).toEqual(story);
   });
 });

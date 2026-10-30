@@ -24,7 +24,8 @@ let context: AudioContext | null = null;
 let output: GainNode | null = null;
 const decoded = new Map<string, Promise<AudioBuffer | null>>();
 const readyBytes = new Map<string, number>();
-const voices: { url: string; stop: () => void; setVolume?: (gain: number) => void }[] = [];
+/** `own` is the effect's own level as a gain; `apply` puts levels into effect while it sounds. */
+const voices: { url: string; own: number; stop: () => void; apply: () => void }[] = [];
 
 /** The volume from 0 to 1 that the open story asks for. Music is not affected. */
 export const sfxVolume = createStore({ level: DEFAULT_SFX_VOLUME });
@@ -35,9 +36,8 @@ const gainOf = (level: number) => level * level;
 function setSfxVolume(level: number): void {
   if (level === sfxVolume.getState().level) return;
   sfxVolume.setState({ level });
-  const gain = gainOf(level);
-  if (output !== null) output.gain.value = gain;
-  for (const voice of voices) voice.setVolume?.(gain);
+  if (output !== null) output.gain.value = gainOf(level);
+  for (const voice of voices) voice.apply();
 }
 
 /** Keeps the volume on what the open story says. Returns a function that stops doing so. */
@@ -122,7 +122,7 @@ function makeRoom(newest: string): void {
 }
 
 /** Plays an effect from the start, cutting off its previous hit if that is still sounding. */
-export async function playSfx(url: string): Promise<void> {
+export async function playSfx(url: string, volume = 1): Promise<void> {
   const audio = audioContext();
   if (audio === null) return;
   // Browsers start audio contexts suspended until a person interacts; a hit is that.
@@ -135,17 +135,20 @@ export async function playSfx(url: string): Promise<void> {
   if (buffer === null) {
     // Too large or not decodable here: an element plays it, restarting the same way.
     const element = new Audio(url);
-    element.volume = gainOf(sfxVolume.getState().level);
     const voice = {
       url,
-      setVolume: (gain: number) => {
-        element.volume = gain;
+      own: gainOf(volume),
+      // shortcut: an element cannot play louder than its file, so levels above 100% stop at the
+      // file's level here; only files over 25 MB play this way.
+      apply: () => {
+        element.volume = Math.min(1, gainOf(sfxVolume.getState().level) * voice.own);
       },
       stop: () => {
         element.pause();
         forget(voice);
       },
     };
+    voice.apply();
     voices.push(voice);
     started(url);
     element.addEventListener("loadedmetadata", () => lengths.set(url, element.duration), {
@@ -157,9 +160,15 @@ export async function playSfx(url: string): Promise<void> {
   }
   const source = audio.context.createBufferSource();
   source.buffer = buffer;
-  source.connect(audio.output);
+  const own = audio.context.createGain();
+  source.connect(own);
+  own.connect(audio.output);
   const voice = {
     url,
+    own: gainOf(volume),
+    apply: () => {
+      own.gain.value = voice.own;
+    },
     stop: () => {
       forget(voice);
       try {
@@ -169,10 +178,19 @@ export async function playSfx(url: string): Promise<void> {
       }
     },
   };
+  voice.apply();
   voices.push(voice);
   started(url);
   source.addEventListener("ended", () => forget(voice), { once: true });
   source.start();
+}
+
+/** Changes an effect's own level, also while it sounds. */
+export function setSfxOwnVolume(url: string, volume: number): void {
+  for (const voice of voices.filter((v) => v.url === url)) {
+    voice.own = gainOf(volume);
+    voice.apply();
+  }
 }
 
 /** Stops one effect if it is sounding; the music and other effects carry on. */
@@ -191,7 +209,7 @@ export function sfxVoices(): number {
   return voices.length;
 }
 
-function forget(voice: { url: string; stop: () => void }): void {
+function forget(voice: (typeof voices)[number]): void {
   const at = voices.indexOf(voice);
   if (at !== -1) voices.splice(at, 1);
   publish();

@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { closeStory, exportStory, newStory, openStory, save } from "@app/commands";
 import { liveUndo } from "@app/live/project";
-import { editStory, redo, undo } from "@app/store";
+import { redo, undo } from "@app/store";
 import { openReleaseNotes } from "@app/updates";
 import { toggleFullscreen } from "@app/window";
-import { setStorySettings } from "@core/model";
 import { useStore } from "@ui/hooks/use-store";
 import { useServices } from "@ui/services/use-services";
 
@@ -14,7 +13,6 @@ interface Item {
   readonly keys?: string;
   readonly run: () => unknown;
   readonly disabled?: boolean;
-  readonly checked?: boolean;
   /** Starts a new group, with a line above it. */
   readonly group?: boolean;
 }
@@ -36,7 +34,6 @@ export function MenuBar({
   const { deps } = useServices();
   const { document } = deps;
   const hasStory = useStore(document, (s) => s.story !== null);
-  const safeAudio = useStore(document, (s) => s.story?.settings?.safeAudio === true);
   const [open, setOpen] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -90,20 +87,6 @@ export function MenuBar({
       ],
     },
     {
-      name: "Settings",
-      items: [
-        {
-          label: "Safe audio mode",
-          checked: safeAudio,
-          disabled: !hasStory,
-          run: () => {
-            editStory(document, (s) => setStorySettings(s, { safeAudio: !safeAudio }));
-          },
-        },
-        { label: "All settings…", run: onShowSettings, disabled: !hasStory, group: true },
-      ],
-    },
-    {
       name: "Help",
       items: [
         { label: "Keyboard shortcuts", keys: "?", run: onShowShortcuts },
@@ -146,51 +129,66 @@ export function MenuBar({
     }
   };
 
+  // Between View and Help, where a settings menu would be; it has nothing to choose between.
+  const settingsAt = menus.findIndex((menu) => menu.name === "Help");
+
   return (
     <div ref={rootRef} className="menubar" role="menubar" onKeyDown={onKeyDown}>
-      {menus.map((menu) => (
-        <div key={menu.name} className="menubar__menu">
-          <button
-            type="button"
-            role="menuitem"
-            className={`menubar__name ${open === menu.name ? "is-open" : ""}`}
-            aria-haspopup="menu"
-            aria-expanded={open === menu.name}
-            onClick={() => {
-              setOpen(open === menu.name ? null : menu.name);
-            }}
-            // With one menu open, pointing at the next opens it, as on any desktop.
-            onPointerEnter={() => {
-              if (open !== null) setOpen(menu.name);
-            }}
-          >
-            {menu.name}
-          </button>
-          {open === menu.name && (
-            <div className="menubar__list" role="menu" aria-label={menu.name}>
-              {menu.items.map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  role={item.checked === undefined ? "menuitem" : "menuitemcheckbox"}
-                  aria-checked={item.checked}
-                  className={`menubar__item ${item.group === true ? "is-grouped" : ""}`}
-                  disabled={item.disabled}
-                  onClick={() => {
-                    setOpen(null);
-                    void item.run();
-                  }}
-                >
-                  <span className="menubar__check" aria-hidden="true">
-                    {item.checked === true ? "✓" : ""}
-                  </span>
-                  <span className="menubar__label">{item.label}</span>
-                  {item.keys !== undefined && <span className="menubar__keys">{item.keys}</span>}
-                </button>
-              ))}
-            </div>
+      {menus.map((menu, index) => (
+        <Fragment key={menu.name}>
+          {index === settingsAt && (
+            <button
+              type="button"
+              role="menuitem"
+              className="menubar__name"
+              disabled={!hasStory}
+              onClick={() => {
+                setOpen(null);
+                onShowSettings();
+              }}
+            >
+              Settings
+            </button>
           )}
-        </div>
+          <div className="menubar__menu">
+            <button
+              type="button"
+              role="menuitem"
+              className={`menubar__name ${open === menu.name ? "is-open" : ""}`}
+              aria-haspopup="menu"
+              aria-expanded={open === menu.name}
+              onClick={() => {
+                setOpen(open === menu.name ? null : menu.name);
+              }}
+              // With one menu open, pointing at the next opens it, as on any desktop.
+              onPointerEnter={() => {
+                if (open !== null) setOpen(menu.name);
+              }}
+            >
+              {menu.name}
+            </button>
+            {open === menu.name && (
+              <div className="menubar__list" role="menu" aria-label={menu.name}>
+                {menu.items.map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    role="menuitem"
+                    className={`menubar__item ${item.group === true ? "is-grouped" : ""}`}
+                    disabled={item.disabled}
+                    onClick={() => {
+                      setOpen(null);
+                      void item.run();
+                    }}
+                  >
+                    <span className="menubar__label">{item.label}</span>
+                    {item.keys !== undefined && <span className="menubar__keys">{item.keys}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </Fragment>
       ))}
     </div>
   );

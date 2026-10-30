@@ -338,6 +338,15 @@ export function setSoundRole(story: Story, blockId: BlockId, role: SoundRole | u
   });
 }
 
+/** Sets an effect's own level; see `AudioBlock.volume`. */
+export function setSoundVolume(story: Story, blockId: BlockId, volume: number): Story {
+  return mapBlocks(story, blockId, (block): Block => {
+    if (block.type !== "audio") return block;
+    const { volume: _old, ...rest } = block;
+    return volume === 1 ? rest : { ...rest, volume };
+  });
+}
+
 /** Turns a block into prose, a spoken line or a note, keeping its text and id. */
 export function setBlockType(story: Story, blockId: BlockId, type: TextBlockType): Story {
   return mapBlocks(story, blockId, (block): Block => {

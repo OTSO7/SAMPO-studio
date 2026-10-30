@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import { playSfx, preloadSfx, sfxLength, sfxPlaying, stopSfx } from "@app/sfx";
+import { playSfx, preloadSfx, setSfxOwnVolume, sfxLength, sfxPlaying, stopSfx } from "@app/sfx";
 import { useStore } from "@ui/hooks/use-store";
 
 /**
@@ -15,10 +15,13 @@ export function SfxPad({
   url,
   label,
   large = false,
+  volume = 1,
 }: {
   url: string;
   label: string;
   large?: boolean;
+  /** This effect's own level; see `AudioBlock.volume`. */
+  volume?: number;
 }) {
   const ref = useRef<HTMLButtonElement | null>(null);
   const startedAt = useStore(sfxPlaying, (s) => s.hits[url]);
@@ -30,8 +33,12 @@ export function SfxPad({
     void preloadSfx(url);
   }, [url]);
 
+  useEffect(() => {
+    setSfxOwnVolume(url, volume);
+  }, [url, volume]);
+
   const hit = () => {
-    void playSfx(url);
+    void playSfx(url, volume);
     // A flash per hit, run by the compositor; restarting it costs nothing.
     ref.current?.animate(
       [

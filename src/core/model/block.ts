@@ -58,6 +58,11 @@ export interface AudioBlock {
    * Absent rather than `"music"`, so files stay as older versions wrote and read them.
    */
   readonly role?: SoundRole;
+  /**
+   * An effect's own level from 0 to 2, on top of the volume for all effects, to even out loud
+   * and quiet files. Absent at 1, the file as it is.
+   */
+  readonly volume?: number;
 }
 
 export type SoundRole = "sfx";

@@ -4,6 +4,7 @@ import type * as Sfx from "./sfx";
 
 /** Records what Web Audio is asked to do; sources end only when told to. */
 class FakeContext {
+  static gains: { gain: { value: number } }[] = [];
   static decodes = 0;
   static decodedLength = 1000;
   static started = 0;
@@ -11,7 +12,9 @@ class FakeContext {
   state = "running";
   destination = {};
   createGain() {
-    return { connect: () => undefined, gain: { value: 1 } };
+    const node = { connect: () => undefined, gain: { value: 1 } };
+    FakeContext.gains.push(node);
+    return node;
   }
   createBufferSource() {
     const source = new FakeSource();
@@ -51,6 +54,7 @@ let sfx: typeof Sfx;
 
 beforeEach(async () => {
   vi.resetModules();
+  FakeContext.gains = [];
   FakeContext.decodes = 0;
   FakeContext.decodedLength = 1000;
   FakeContext.started = 0;
@@ -160,6 +164,16 @@ describe("sound effects", () => {
     loadDocument(document, sampleStory(), null);
     expect(sfx.sfxVolume.getState().level).toBe(0.8);
     stop();
+  });
+
+  it("plays each effect at its own level, changeable while it sounds", async () => {
+    await sfx.playSfx("asset://loud.wav", 0.5);
+    await sfx.playSfx("asset://quiet.wav", 2);
+    // The first gain is the volume for all effects; then one for each sound.
+    expect(FakeContext.gains.slice(1).map((node) => node.gain.value)).toEqual([0.25, 4]);
+    sfx.setSfxOwnVolume("asset://loud.wav", 1);
+    expect(FakeContext.gains[1]?.gain.value).toBe(1);
+    expect(FakeContext.gains[2]?.gain.value).toBe(4);
   });
 
   it("knows how long an effect is once decoded, for the progress bar", async () => {

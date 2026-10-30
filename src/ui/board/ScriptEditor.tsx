@@ -5,6 +5,7 @@ import {
   ensureCharacter,
   moveBlock,
   setSoundRole,
+  setSoundVolume,
   removeBlock,
   setBlockType,
   setLineDirection,
@@ -28,8 +29,8 @@ import { useServices } from "@ui/services/use-services";
 import { AudioPlayer } from "./AudioPlayer";
 import { ImageViewer } from "./ImageViewer";
 import { mediaFiles, soundExtension } from "./images";
+import { SfxOwnVolume } from "./SfxOwnVolume";
 import { SfxPad } from "./SfxPad";
-import { SfxVolume } from "./SfxVolume";
 import { SpeakerCombo } from "./SpeakerCombo";
 import { estimateSeconds } from "./story-lookup";
 import { useAddImages } from "./use-images";
@@ -229,8 +230,6 @@ export function ScriptEditor({
     return below === -1 ? rows.length : below;
   };
 
-  const firstEffectId = beat.blocks.find((b) => b.type === "audio" && b.role === "sfx")?.id;
-
   return (
     <div
       ref={rootRef}
@@ -280,16 +279,13 @@ export function ScriptEditor({
             >
               {grip(block)}
               {block.role === "sfx" ? (
-                <>
-                  <SfxPad
-                    key={arrivals}
-                    url={files.mediaUrl(block.src)}
-                    label={block.text || "Effect"}
-                    large={size === "large"}
-                  />
-                  {/* One slider per card is enough: it moves every effect. */}
-                  {size !== "large" && block.id === firstEffectId && <SfxVolume />}
-                </>
+                <SfxPad
+                  key={arrivals}
+                  url={files.mediaUrl(block.src)}
+                  label={block.text || "Effect"}
+                  large={size === "large"}
+                  volume={block.volume ?? 1}
+                />
               ) : (
                 <AudioPlayer
                   key={arrivals}
@@ -308,6 +304,15 @@ export function ScriptEditor({
                     edit((s) => updateBlockText(s, block.id, text), `text:${block.id}`);
                   }}
                 />
+                {block.role === "sfx" && (
+                  <SfxOwnVolume
+                    label={block.text || "effect"}
+                    volume={block.volume ?? 1}
+                    onChange={(volume) => {
+                      edit((s) => setSoundVolume(s, block.id, volume), `volume:${block.id}`);
+                    }}
+                  />
+                )}
                 <span className="sound-role" role="group" aria-label="Kind of sound">
                   {(["music", "sfx"] as const).map((kind) => (
                     <button
