@@ -4,6 +4,7 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
 use std::sync::{Mutex, PoisonError};
+use std::time::Duration;
 
 use serde::Serialize;
 use tauri::ipc::{InvokeBody, Request};
@@ -76,6 +77,32 @@ pub fn read_story_file(app: AppHandle, path: PathBuf) -> Result<String, CommandE
                 let _ = app.emit("open-progress", OpenProgress { done, total });
             },
         )?)
+    })
+}
+
+/// A working copy of unused sounds may take this much before the oldest make room.
+const MEDIA_BUDGET_BYTES: u64 = 8 * 1024 * 1024 * 1024;
+/// Sounds unused this long are unpacked again from their story when it next opens.
+const MEDIA_MAX_AGE: Duration = Duration::from_secs(30 * 24 * 60 * 60);
+
+/// Cleans the media folder; see `storage::clean_media`. `keep` lists what shared projects need,
+/// and `packages` the story files known to hold copies of what is cleaned.
+#[tauri::command(async)]
+pub fn clean_media_folder(
+    app: AppHandle,
+    keep: Vec<String>,
+    packages: Vec<PathBuf>,
+) -> Result<storage::Cleaning, CommandError> {
+    guarded(|| {
+        let store = crate::backups::media_store(&app)?;
+        Ok(storage::clean_media(
+            &media_path(&app)?,
+            &keep.into_iter().collect(),
+            &packages,
+            Some(&store),
+            MEDIA_BUDGET_BYTES,
+            MEDIA_MAX_AGE,
+        ))
     })
 }
 

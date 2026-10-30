@@ -1,6 +1,8 @@
 import * as Y from "yjs";
 
 import { backupStory } from "../backups";
+import { readUpTo } from "../media-read";
+import { isPlaying, playback } from "../playback";
 import { closeStory, type AppDeps } from "../commands";
 import {
   ask,
@@ -28,6 +30,7 @@ import {
 } from "./crypto";
 import {
   findProject,
+  projects,
   forgetProject,
   loadLocal,
   saveLocal,
@@ -171,6 +174,8 @@ const FLUSH_MS = 60;
 const PERSIST_MS = 700;
 const PRESENCE_MS = 20_000;
 const MEDIA_WAIT_MS = 60_000;
+/** Waiting at the syncing screen, often enough to feel quick and well under the relay's limit. */
+const GATE_RETRY_MS = 4_000;
 /** No answer from the cloud this long while opening: offer to go on offline. */
 const GATE_OFFLINE_MS = 8_000;
 /** Sending this computer's unsent edits may take this long before the gate stops waiting. */
@@ -424,6 +429,28 @@ export function peekProject(record: ProjectRecord): Promise<string[] | null> {
 
 const isString = (value: unknown): value is string => typeof value === "string";
 
+/**
+ * Every picture and sound the shared projects on this computer use. Their files may exist
+ * nowhere else, so nothing here may ever be cleaned. Throws if a copy cannot be read: cleaning
+ * must then wait, rather than guess.
+ */
+export async function sharedProjectMedia(): Promise<string[]> {
+  const ids = new Set<string>();
+  for (const record of projects.getState().list) {
+    for (const id of record.unsentMedia ?? []) ids.add(id);
+    if (record.storyId === "") continue; // Still asking to join: nothing here yet.
+    const copy = await loadLocal(record.id);
+    if (copy === null) throw new Error(`No local copy of project ${record.id}`);
+    const doc = new Y.Doc();
+    Y.applyUpdate(doc, copy.doc);
+    for (const update of copy.outbox) Y.applyUpdate(doc, update);
+    const story = readStory(doc, null);
+    doc.destroy();
+    if (story !== null) for (const id of storyMediaIds(story)) ids.add(id);
+  }
+  return [...ids];
+}
+
 /** Goes on with this computer's copy without waiting for the project to be in sync. */
 export function skipSyncGate(): void {
   current?.openGate();
@@ -544,6 +571,7 @@ class Project {
   /** Waiting for the outbox to empty, while the gate is on "sending". */
   private drained: (() => void)[] = [];
   private stopWatching: () => void;
+  private stopMusicWatch: () => void;
 
   constructor(
     private readonly deps: AppDeps,
@@ -561,6 +589,10 @@ class Project {
       if (origin === LOCAL || origin === SEED || undo) this.queue(update);
       if (origin === REMOTE || undo) this.show();
       this.persistSoon();
+    });
+
+    this.stopMusicWatch = playback.subscribe((state, previous) => {
+      if (previous.playing && !state.playing) void this.sendUnsentMedia();
     });
 
     this.stopWatching = deps.document.subscribe((state, previous) => {
@@ -1093,25 +1125,23 @@ class Project {
   }
 
   private async uploadOne(id: string, name: string): Promise<void> {
-    // Offline, or no room in the cloud: remembered, and sent once that changes.
-    if (!this.online || this.cloudFull) {
+    // Offline, no room in the cloud, or a song on: remembered, and sent once that changes.
+    if (!this.online || this.cloudFull || isPlaying()) {
       this.keepUnsent(id);
       return;
     }
-    let bytes: Uint8Array;
+    let bytes: Uint8Array | null;
     try {
-      const response = await fetch(this.deps.files.mediaUrl(`media:${id}`));
-      if (!response.ok) return;
-      bytes = new Uint8Array(await response.arrayBuffer());
+      bytes = await readUpTo(this.deps.files.mediaUrl(`media:${id}`), MAX_SHARED_FILE_BYTES);
     } catch {
       return;
     }
-    if (bytes.length > MAX_SHARED_FILE_BYTES) {
+    if (bytes === null) {
       if (!this.tooLarge.has(id)) {
         this.tooLarge.add(id);
         showNotice(this.deps.notices, {
           tone: "error",
-          title: `${this.mediaLabel(id)} is ${Math.round(bytes.length / (1024 * 1024))} MB, more than the 100 MB a shared project can pass on. It stays on this computer; the others see it as missing.`,
+          title: `${this.mediaLabel(id)} is more than the 100 MB a shared project can pass on. It stays on this computer; the others see it as missing.`,
         });
       }
       return;
@@ -1318,8 +1348,7 @@ class Project {
     this.retries += 1;
     window.setTimeout(
       () => this.connect(create && this.record.lastSeq === 0),
-      // Someone waiting at the syncing screen gets a try every two seconds.
-      this.gate === null ? Math.min(30_000, 1000 * 2 ** Math.min(this.retries, 5)) : 2000,
+      this.gate === null ? Math.min(30_000, 1000 * 2 ** Math.min(this.retries, 5)) : GATE_RETRY_MS,
     );
   }
 
@@ -1332,6 +1361,7 @@ class Project {
     }
     this.stopped = true;
     this.stopWatching();
+    this.stopMusicWatch();
     if (this.presenceTimer !== null) window.clearInterval(this.presenceTimer);
     if (this.fullRetryTimer !== null) window.clearTimeout(this.fullRetryTimer);
     if (this.gateTimer !== null) window.clearTimeout(this.gateTimer);

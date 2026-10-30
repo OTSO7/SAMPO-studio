@@ -10,7 +10,7 @@ import "./live.css";
 
 const opened = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
 /** How often the start screen asks who is in each project. */
-const PEEK_MS = 30_000;
+const PEEK_MS = 60_000;
 
 /** Who is working on each project now, refreshed while the start screen is showing. */
 function useWhoIsHere(records: readonly ProjectRecord[]): ReadonlyMap<string, readonly string[]> {

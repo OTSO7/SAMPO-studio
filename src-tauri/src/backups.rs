@@ -23,7 +23,7 @@ fn root(app: &AppHandle) -> Result<PathBuf, CommandError> {
 }
 
 /// Every copy's pictures and sounds, each once, named by its content.
-fn media_store(app: &AppHandle) -> Result<PathBuf, CommandError> {
+pub(crate) fn media_store(app: &AppHandle) -> Result<PathBuf, CommandError> {
     Ok(root(app)?.join("media"))
 }
 
@@ -96,6 +96,7 @@ pub fn read_backup(app: AppHandle, path: PathBuf) -> Result<String, CommandError
             let kept = store.join(&id);
             if kept.is_file() {
                 storage::link_or_copy(&kept, &cache.join(&id))?;
+                storage::mark_used(&cache, &id);
             }
         }
         Ok(text)

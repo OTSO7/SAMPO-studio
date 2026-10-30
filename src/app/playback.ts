@@ -70,7 +70,7 @@ function audio(): HTMLAudioElement {
   return created;
 }
 
-/** True while a sound is playing; saves and backups wait so the disk stays quiet for it. */
+/** True while a song is playing. */
 export const isPlaying = (): boolean => playback.getState().playing;
 
 /** Plays `url`, or pauses and resumes it when it is the sound already loaded. */
@@ -93,25 +93,11 @@ export function seek(seconds: number): void {
   player.currentTime = Math.max(0, Math.min(seconds, player.duration || 0));
 }
 
-/**
- * Jumps to a point given as a share of the track (0 to 1), e.g. where the waveform was pressed.
- * A track that is not loaded yet starts there.
- */
-export function seekTo(url: string, label: string, share: number): void {
+/** Jumps to a point given as a share of the loaded track (0 to 1); any other track is left be. */
+export function seekTo(url: string, share: number): void {
   const player = audio();
-  const at = Math.min(1, Math.max(0, share));
-  if (playback.getState().url === url && player.duration > 0) {
-    player.currentTime = at * player.duration;
-    return;
-  }
-  togglePlay(url, label);
-  player.addEventListener(
-    "loadedmetadata",
-    () => {
-      player.currentTime = at * (player.duration || 0);
-    },
-    { once: true },
-  );
+  if (playback.getState().url !== url || !(player.duration > 0)) return;
+  player.currentTime = Math.min(1, Math.max(0, share)) * player.duration;
 }
 
 /** Where the loaded track is right now, finer than the store's few updates a second. */

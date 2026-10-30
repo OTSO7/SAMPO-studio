@@ -1,7 +1,8 @@
 import { useState } from "react";
 
-import { formatTime, playback, restart, togglePlay } from "@app/playback";
+import { formatTime, playback } from "@app/playback";
 import { useStore } from "@ui/hooks/use-store";
+import { keepKeysHere, usePlayerActions } from "./use-player-actions";
 import { Waveform } from "./Waveform";
 
 interface AudioPlayerProps {
@@ -20,6 +21,7 @@ interface AudioPlayerProps {
  * and only one sound plays at a time, as on a mixing desk's solo button.
  */
 export function AudioPlayer({ url, label, compact = false }: AudioPlayerProps) {
+  const actions = usePlayerActions();
   const state = useStore(playback, (s) => (s.url === url ? s : null));
   // Read from the file's header alone, so the length shows before anything plays.
   const [length, setLength] = useState(0);
@@ -28,7 +30,10 @@ export function AudioPlayer({ url, label, compact = false }: AudioPlayerProps) {
   const duration = state !== null && state.duration > 0 ? state.duration : length;
 
   return (
-    <div className={`player ${compact ? "player--compact" : ""} ${playing ? "is-playing" : ""}`}>
+    <div
+      className={`player ${compact ? "player--compact" : ""} ${playing ? "is-playing" : ""}`}
+      onKeyDown={keepKeysHere}
+    >
       <audio
         src={url}
         preload="metadata"
@@ -42,7 +47,7 @@ export function AudioPlayer({ url, label, compact = false }: AudioPlayerProps) {
         aria-label={`${playing ? "Pause" : "Play"} ${label}`}
         title={label}
         onClick={() => {
-          togglePlay(url, label);
+          actions.play(url, label);
         }}
       >
         <PlayIcon playing={playing} />
@@ -54,7 +59,7 @@ export function AudioPlayer({ url, label, compact = false }: AudioPlayerProps) {
           aria-label={`Back to the start of ${label}`}
           title="Back to the start"
           disabled={state === null}
-          onClick={restart}
+          onClick={actions.restart}
         >
           <svg viewBox="0 0 12 12" aria-hidden="true">
             <path d="M2 2h1.6v8H2zM10.5 2v8L4.5 6z" />

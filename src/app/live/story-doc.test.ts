@@ -5,6 +5,7 @@ import {
   deletePhase,
   insertBeat,
   moveBeat,
+  setStorySettings,
   updateBeat,
   updateBlockText,
   type Story,
@@ -114,5 +115,32 @@ describe("orderKeys", () => {
     expect(keys[0]).toBe("a0");
     expect([...keys].sort()).toEqual(keys);
     expect(new Set(keys).size).toBe(4);
+  });
+});
+
+describe("story settings in a shared project", () => {
+  it("reach the other side, and are removed there too", () => {
+    const base = sampleStory();
+    const doc = new Y.Doc();
+    writeStory(doc, null, base, "seed");
+    expect(readStory(doc, null)?.settings).toBeUndefined();
+
+    const on = setStorySettings(base, { safeAudio: true, sfxVolume: 0.3 });
+    writeStory(doc, base, on, "edit");
+    const other = new Y.Doc();
+    Y.applyUpdate(other, Y.encodeStateAsUpdate(doc));
+    expect(readStory(other, null)?.settings).toEqual({ safeAudio: true, sfxVolume: 0.3 });
+
+    const off = setStorySettings(on, { safeAudio: false, sfxVolume: 0.8 });
+    writeStory(doc, on, off, "edit");
+    expect(readStory(doc, on)?.settings).toBeUndefined();
+  });
+
+  it("do not make an unchanged story look changed", () => {
+    const set = setStorySettings(sampleStory(), { safeAudio: true });
+    const doc = new Y.Doc();
+    writeStory(doc, null, set, "seed");
+    const first = readStory(doc, null);
+    expect(readStory(doc, first)).toBe(first);
   });
 });

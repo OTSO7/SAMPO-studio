@@ -2,11 +2,13 @@
  * The outline of a sound for drawing its waveform: the loudest point in each of a few hundred
  * slices, from 0 to 1.
  *
- * A WAV is read as a stream and measured as it goes, never decoded whole, so a 300 MB track
- * costs a little memory and one read of the file. Each track is measured once: the result is
+ * A WAV is read in small pieces and measured as it goes, never loaded or decoded whole, so a
+ * 300 MB track costs a little memory and one unhurried read of the file. Each track is measured once: the result is
  * kept for the session and in local storage, so a gig never waits for it twice. Other formats
  * are decoded by the browser, only when small enough for that to be harmless.
  */
+
+import { readPieces } from "./media-read";
 
 export type Peaks = Float32Array;
 
@@ -14,6 +16,8 @@ export const PEAK_COUNT = 480;
 /** Compressed formats decode fully in memory; above this the waveform is left out. */
 const MAX_DECODED_BYTES = 60 * 1024 * 1024;
 const STORAGE_PREFIX = "sampo.peaks:";
+/** The measuring happens while the song plays, so it gives way to it between pieces. */
+const PAUSE_MS = 5;
 
 const known = new Map<string, Peaks>();
 const pending = new Map<string, Promise<Peaks | null>>();
@@ -48,37 +52,26 @@ export function loadPeaks(url: string): Promise<Peaks | null> {
 }
 
 async function measure(url: string): Promise<Peaks | null> {
-  const response = await fetch(url);
-  if (!response.ok || response.body === null) return null;
-  const reader = response.body.getReader();
-  const first = await reader.read();
-  if (first.done) return null;
+  const pieces = readPieces(url, PAUSE_MS);
+  const first = await pieces.next();
+  if (first.done === true) return null;
   const head = first.value;
   const isWav = head.length >= 12 && ascii(head, 0, 4) === "RIFF" && ascii(head, 8, 4) === "WAVE";
   if (isWav) {
     return wavPeaks(
       (async function* () {
         yield head;
-        for (;;) {
-          const next = await reader.read();
-          if (next.done) return;
-          yield next.value;
-        }
+        yield* pieces;
       })(),
     );
   }
   // Not a WAV: decode it whole, if it is small enough for that.
   const parts: Uint8Array[] = [head];
   let size = head.length;
-  for (;;) {
-    const next = await reader.read();
-    if (next.done) break;
-    size += next.value.length;
-    if (size > MAX_DECODED_BYTES) {
-      await reader.cancel();
-      return null;
-    }
-    parts.push(next.value);
+  for await (const piece of pieces) {
+    size += piece.length;
+    if (size > MAX_DECODED_BYTES) return null;
+    parts.push(piece);
   }
   return decodedPeaks(await new Blob(parts as BlobPart[]).arrayBuffer());
 }

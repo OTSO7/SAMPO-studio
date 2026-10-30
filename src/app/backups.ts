@@ -2,7 +2,6 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 
 import { serializeStory } from "@core/file";
 import { storyMediaIds, type Story } from "@core/model";
-import { isPlaying } from "./playback";
 import type { DocumentStore } from "./store";
 
 /**
@@ -92,8 +91,6 @@ export function watchBackups(document: DocumentStore): () => void {
   const timer = window.setInterval(() => {
     const { story, revision } = document.getState();
     if (story === null || revision === lastRevision || Date.now() - lastBackup < AUTO_MS) return;
-    // A copy packs every sound into it; that much disk work waits until the music stops.
-    if (isPlaying()) return;
     lastRevision = revision;
     lastBackup = Date.now();
     void backupStory(story, "autosave");

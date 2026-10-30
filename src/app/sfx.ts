@@ -9,16 +9,43 @@
  * music. A cap on voices keeps many pads at once from piling up: the oldest stops to make room.
  */
 
+import { DEFAULT_SFX_VOLUME } from "@core/model";
+import { readUpTo } from "./media-read";
 import { createStore } from "./store/create-store";
+import type { DocumentStore } from "./store/document-store";
 
 const MAX_VOICES = 24;
 /** Effects are short; a file this large plays from an element instead of decoding. */
 const MAX_DECODED_BYTES = 25 * 1024 * 1024;
+/** Decoded effects kept ready in memory; the longest unused make room, and decode again if hit. */
+const MAX_READY_BYTES = 512 * 1024 * 1024;
 
 let context: AudioContext | null = null;
 let output: GainNode | null = null;
 const decoded = new Map<string, Promise<AudioBuffer | null>>();
-const voices: { url: string; stop: () => void }[] = [];
+const readyBytes = new Map<string, number>();
+const voices: { url: string; stop: () => void; setVolume?: (gain: number) => void }[] = [];
+
+/** The volume from 0 to 1 that the open story asks for. Music is not affected. */
+export const sfxVolume = createStore({ level: DEFAULT_SFX_VOLUME });
+
+/** Squared, because hearing is not linear: the slider's middle then sounds like the middle. */
+const gainOf = (level: number) => level * level;
+
+function setSfxVolume(level: number): void {
+  if (level === sfxVolume.getState().level) return;
+  sfxVolume.setState({ level });
+  const gain = gainOf(level);
+  if (output !== null) output.gain.value = gain;
+  for (const voice of voices) voice.setVolume?.(gain);
+}
+
+/** Keeps the volume on what the open story says. Returns a function that stops doing so. */
+export function followStoryVolume(document: DocumentStore): () => void {
+  return document.subscribe((state) => {
+    setSfxVolume(state.story?.settings?.sfxVolume ?? DEFAULT_SFX_VOLUME);
+  });
+}
 
 /**
  * The effects sounding right now and when each hit started, so a pad can show that it plays,
@@ -47,6 +74,7 @@ function audioContext(): { context: AudioContext; output: GainNode } | null {
   if (context === null || output === null) {
     context = new AudioContext({ latencyHint: "interactive" });
     output = context.createGain();
+    output.gain.value = gainOf(sfxVolume.getState().level);
     output.connect(context.destination);
   }
   return { context, output };
@@ -55,22 +83,42 @@ function audioContext(): { context: AudioContext; output: GainNode } | null {
 /** Decodes an effect ahead of its first hit, so even that one starts at once. */
 export function preloadSfx(url: string): Promise<AudioBuffer | null> {
   const known = decoded.get(url);
-  if (known !== undefined) return known;
+  if (known !== undefined) {
+    // Moved to the back: the map's front is what was used longest ago.
+    decoded.delete(url);
+    decoded.set(url, known);
+    return known;
+  }
   const job = (async () => {
     const audio = audioContext();
     if (audio === null || url === "") return null;
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    const size = Number(response.headers.get("content-length") ?? 0);
-    if (size > MAX_DECODED_BYTES) return null;
-    const bytes = await response.arrayBuffer();
-    if (bytes.byteLength > MAX_DECODED_BYTES) return null;
-    const buffer = await audio.context.decodeAudioData(bytes);
+    const bytes = await readUpTo(url, MAX_DECODED_BYTES);
+    if (bytes === null) return null;
+    const buffer = await audio.context.decodeAudioData(bytes.buffer as ArrayBuffer);
     lengths.set(url, buffer.duration);
+    readyBytes.set(url, buffer.length * buffer.numberOfChannels * 4);
+    makeRoom(url);
     return buffer;
   })().catch(() => null);
   decoded.set(url, job);
+  // Not ready is not final: a sound still on its way from a friend can be tried again.
+  void job.then((buffer) => {
+    if (buffer === null) decoded.delete(url);
+  });
   return job;
+}
+
+function makeRoom(newest: string): void {
+  let total = 0;
+  for (const bytes of readyBytes.values()) total += bytes;
+  for (const url of decoded.keys()) {
+    if (total <= MAX_READY_BYTES) return;
+    // A sound that is playing keeps its own memory until it ends; dropping it here is safe.
+    if (url === newest) continue;
+    total -= readyBytes.get(url) ?? 0;
+    readyBytes.delete(url);
+    decoded.delete(url);
+  }
 }
 
 /** Plays an effect from the start, cutting off its previous hit if that is still sounding. */
@@ -87,8 +135,12 @@ export async function playSfx(url: string): Promise<void> {
   if (buffer === null) {
     // Too large or not decodable here: an element plays it, restarting the same way.
     const element = new Audio(url);
+    element.volume = gainOf(sfxVolume.getState().level);
     const voice = {
       url,
+      setVolume: (gain: number) => {
+        element.volume = gain;
+      },
       stop: () => {
         element.pause();
         forget(voice);

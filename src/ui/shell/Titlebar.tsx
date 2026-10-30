@@ -2,14 +2,26 @@ import { useCallback, useEffect, useState } from "react";
 
 import { closeStory, save } from "@app/commands";
 import { isDirty, showNotice } from "@app/store";
+import { isPlaying } from "@app/playback";
 import { checkForUpdate, type AvailableUpdate } from "@app/updates";
 import { closeWindow, minimizeWindow, toggleMaximized, watchMaximized } from "@app/window";
 import { useStore } from "@ui/hooks/use-store";
 import { LiveControls } from "@ui/live/LiveControls";
+import { MenuBar } from "./MenuBar";
 import { Kbd } from "@ui/primitives/Kbd";
 import { useServices } from "@ui/services/use-services";
 
-export function Titlebar({ onFocus }: { onFocus: (() => void) | null }) {
+export function Titlebar({
+  onFocus,
+  onShowSettings,
+  onShowShortcuts,
+  onShowWhatsNew,
+}: {
+  onFocus: (() => void) | null;
+  onShowSettings: () => void;
+  onShowShortcuts: () => void;
+  onShowWhatsNew: () => void;
+}) {
   const { deps } = useServices();
   const { document } = deps;
   const title = useStore(document, (state) => state.story?.title ?? null);
@@ -19,13 +31,10 @@ export function Titlebar({ onFocus }: { onFocus: (() => void) | null }) {
     // The bar itself moves the window; double-clicking it maximizes, as in any Windows app.
     <header className="shell__titlebar" data-tauri-drag-region>
       {title === null ? (
-        <>
-          <div className="shell__wordmark" aria-label="SAMPO Studio">
-            <span className="shell__wordmark-mark" aria-hidden="true" />
-            SAMPO
-          </div>
-          <UpdateButton />
-        </>
+        <div className="shell__wordmark" aria-label="SAMPO Studio">
+          <span className="shell__wordmark-mark" aria-hidden="true" />
+          SAMPO
+        </div>
       ) : (
         <button
           type="button"
@@ -38,6 +47,13 @@ export function Titlebar({ onFocus }: { onFocus: (() => void) | null }) {
           SAMPO
         </button>
       )}
+      <MenuBar
+        onFocus={onFocus}
+        onShowSettings={onShowSettings}
+        onShowShortcuts={onShowShortcuts}
+        onShowWhatsNew={onShowWhatsNew}
+      />
+      {title === null && <UpdateButton />}
       {title !== null && (
         <div className="shell__title" data-tauri-drag-region>
           {title}
@@ -120,6 +136,13 @@ function UpdateButton() {
       onClick={() => {
         if (state.kind !== "available") {
           run();
+          return;
+        }
+        if (isPlaying()) {
+          showNotice(notices, {
+            tone: "info",
+            title: "Stop the music first: updating restarts the app.",
+          });
           return;
         }
         const { update } = state;

@@ -435,3 +435,11 @@
 .focus-card .script__block:focus-within .script__tool--danger {
   opacity: 1;
 }
+
+.focus__top .sfx-volume {
+  margin-left: auto;
+}
+
+.focus__top .sfx-volume + .focus__layout {
+  margin-left: 0;
+}

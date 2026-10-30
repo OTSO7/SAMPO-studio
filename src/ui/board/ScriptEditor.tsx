@@ -29,6 +29,7 @@ import { AudioPlayer } from "./AudioPlayer";
 import { ImageViewer } from "./ImageViewer";
 import { mediaFiles, soundExtension } from "./images";
 import { SfxPad } from "./SfxPad";
+import { SfxVolume } from "./SfxVolume";
 import { SpeakerCombo } from "./SpeakerCombo";
 import { estimateSeconds } from "./story-lookup";
 import { useAddImages } from "./use-images";
@@ -228,6 +229,8 @@ export function ScriptEditor({
     return below === -1 ? rows.length : below;
   };
 
+  const firstEffectId = beat.blocks.find((b) => b.type === "audio" && b.role === "sfx")?.id;
+
   return (
     <div
       ref={rootRef}
@@ -277,12 +280,16 @@ export function ScriptEditor({
             >
               {grip(block)}
               {block.role === "sfx" ? (
-                <SfxPad
-                  key={arrivals}
-                  url={files.mediaUrl(block.src)}
-                  label={block.text || "Effect"}
-                  large={size === "large"}
-                />
+                <>
+                  <SfxPad
+                    key={arrivals}
+                    url={files.mediaUrl(block.src)}
+                    label={block.text || "Effect"}
+                    large={size === "large"}
+                  />
+                  {/* One slider per card is enough: it moves every effect. */}
+                  {size !== "large" && block.id === firstEffectId && <SfxVolume />}
+                </>
               ) : (
                 <AudioPlayer
                   key={arrivals}

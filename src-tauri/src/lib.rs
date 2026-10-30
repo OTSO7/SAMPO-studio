@@ -20,6 +20,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::read_story_file,
             commands::missing_media,
+            commands::clean_media_folder,
             commands::write_story_file,
             commands::story_file_modified,
             commands::put_media,

@@ -1,6 +1,7 @@
 import { generateNKeysBetween } from "fractional-indexing";
 import type * as Y from "yjs";
 
+import { readSettings } from "@core/model";
 import type { Beat, Block, CardType, Entity, Phase, Story } from "@core/model";
 
 /**
@@ -59,6 +60,9 @@ export function writeStory(doc: Y.Doc, synced: Story | null, next: Story, origin
   doc.transact(() => {
     if (synced?.title !== next.title) m.meta.set("title", next.title);
     if (synced?.id !== next.id) m.meta.set("id", next.id);
+    if (synced?.settings !== next.settings) {
+      m.meta.set("settings", JSON.stringify(next.settings ?? {}));
+    }
 
     const before = index(synced);
     sync(
@@ -107,6 +111,15 @@ export function writeStory(doc: Y.Doc, synced: Story | null, next: Story, origin
   }, origin);
 }
 
+/** Text from other computers: anything unreadable counts as nothing. */
+function parseJson(text: string | undefined): unknown {
+  try {
+    return text === undefined ? null : JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 /** The story the document holds now. `previous` lets unchanged parts keep their objects. */
 export function readStory(doc: Y.Doc, previous: Story | null): Story | null {
   const m = maps(doc);
@@ -146,17 +159,27 @@ export function readStory(doc: Y.Doc, previous: Story | null): Story | null {
   const cardTypes = (group(m.cardTypes).get("") ?? []).map(([, value]) => value);
   const entities = (group(m.entities).get("") ?? []).map(([, value]) => value);
   const title = m.meta.get("title") ?? "";
+  const settings = readSettings(parseJson(m.meta.get("settings")));
+  const sameSettings = JSON.stringify(previous?.settings) === JSON.stringify(settings);
   if (
     previous !== null &&
     previous.id === id &&
     previous.title === title &&
+    sameSettings &&
     sameList(previous.phases, phases) &&
     sameList(previous.cardTypes, cardTypes) &&
     sameList(previous.entities, entities)
   ) {
     return previous;
   }
-  return { id: id as Story["id"], title, cardTypes, entities, phases };
+  return {
+    id: id as Story["id"],
+    title,
+    cardTypes,
+    entities,
+    phases,
+    ...(settings === undefined ? {} : { settings: sameSettings ? previous?.settings : settings }),
+  };
 }
 
 /** Writes changed values, and places for new or moved items between their neighbours. */

@@ -23,6 +23,7 @@ export function serializeStory(story: Story, options: SerializeOptions = {}): st
       cardTypes: story.cardTypes.map(cardTypeToJson),
       entities: story.entities.map(entityToJson),
       phases: story.phases.map(phaseToJson),
+      ...optional("settings", story.settings),
     },
   };
 

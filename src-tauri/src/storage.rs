@@ -7,11 +7,13 @@
 //! Nothing here needs a Tauri runtime, so the logic is tested directly. The command layer in
 //! `commands.rs` is a thin wrapper around these functions.
 
+use std::collections::HashSet;
 use std::fmt;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
-use std::time::UNIX_EPOCH;
+use std::sync::{LazyLock, Mutex, PoisonError, RwLock};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use sha2::{Digest, Sha256};
 use zip::write::SimpleFileOptions;
@@ -39,6 +41,39 @@ const COMPACT_AFTER_BYTES: u64 = 32 * 1024 * 1024;
 /// Progress is reported about this often while a package's files are unpacked.
 const PROGRESS_STEP_BYTES: u64 = 8 * 1024 * 1024;
 const EOCD_SIGNATURE: [u8; 4] = *b"PK\x05\x06";
+
+/// Held for reading while the media folder is used and for writing while it is cleaned, so a
+/// story never finds a file "already there" that the cleaning then removes.
+static MEDIA_FOLDER_USE: RwLock<()> = RwLock::new(());
+/// Files opened or added since the app started. An open story may rely on any of them, also
+/// through its undo history, so they are never cleaned.
+static USED_THIS_RUN: LazyLock<Mutex<HashSet<String>>> = LazyLock::new(Default::default);
+
+/// Records a file as in use: safe for this run, and most recently used for the next cleaning.
+pub fn mark_used(media_dir: &Path, id: &str) {
+    USED_THIS_RUN
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .insert(id.to_owned());
+    // Best effort: a file that cannot be touched is only cleaned a little sooner.
+    if let Ok(file) = OpenOptions::new().write(true).open(media_dir.join(id)) {
+        let _ = file.set_modified(SystemTime::now());
+    }
+}
+
+/// Feeds what is read into a SHA-256 hash on its way through.
+struct Hashing<'a, R> {
+    inner: &'a mut R,
+    hash: Sha256,
+}
+
+impl<R: Read> Read for Hashing<'_, R> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let n = self.inner.read(buf)?;
+        self.hash.update(&buf[..n]);
+        Ok(n)
+    }
+}
 
 const STORY_ENTRY: &str = "story.json";
 const MEDIA_FOLDER: &str = "media/";
@@ -168,8 +203,21 @@ pub fn read_story_with_progress(
     }
 
     drop(file);
+    let _in_use = MEDIA_FOLDER_USE
+        .read()
+        .unwrap_or_else(PoisonError::into_inner);
     let (mut archive, _) = open_package(path)?;
     fs::create_dir_all(media_dir).map_err(|err| StorageError::io(media_dir, err))?;
+    // Marked first, so nothing this story needs can be cleaned from here on.
+    let ids: Vec<String> = archive
+        .file_names()
+        .filter_map(|name| name.strip_prefix(MEDIA_FOLDER))
+        .filter(|id| is_media_id(id))
+        .map(str::to_owned)
+        .collect();
+    for id in &ids {
+        mark_used(media_dir, id);
+    }
     // Names are checked so an entry like `media/../../x` can never escape the folder.
     let fresh: Vec<(usize, String, u64)> = (0..archive.len())
         .filter_map(|index| {
@@ -188,16 +236,32 @@ pub fn read_story_with_progress(
             .by_index(index)
             .map_err(|err| StorageError::zip(path, err))?;
         // Reading checks each file's CRC, so a package damaged on the way is noticed here.
-        write_atomic_with(&media_dir.join(&id), false, |out| {
-            copy_reporting(&mut entry, out, &mut |n| {
+        let unpacked = write_atomic_with(&media_dir.join(&id), false, |out| {
+            let mut source = Hashing {
+                inner: &mut entry,
+                hash: Sha256::new(),
+            };
+            copy_reporting(&mut source, out, &mut |n| {
                 let before = done / PROGRESS_STEP_BYTES;
                 done += n;
                 if done / PROGRESS_STEP_BYTES != before {
                     progress(done, total);
                 }
             })
-            .map_err(|err| StorageError::io(path, err))
-        })?;
+            .map_err(|err| StorageError::io(path, err))?;
+            // The name promises the contents: a file that breaks it must not take that name.
+            let hash = hex(&source.hash.finalize());
+            if id.split('.').next() == Some(hash.as_str()) {
+                Ok(())
+            } else {
+                Err(StorageError::BadMedia(id.clone()))
+            }
+        });
+        // One false file shows as missing; the rest of the story still opens.
+        match unpacked {
+            Err(StorageError::BadMedia(_)) | Ok(()) => {}
+            Err(err) => return Err(err),
+        }
     }
     progress(total, total);
 
@@ -256,6 +320,9 @@ pub fn link_or_copy(from: &Path, to: &Path) -> Result<()> {
 /// Stores a picture or sound in `media_dir` under the hash of its bytes and returns that
 /// name, e.g. `3fa9…c2.webp`. Adding the same file twice stores it once.
 pub fn put_media(media_dir: &Path, bytes: &[u8], extension: &str) -> Result<String> {
+    let _in_use = MEDIA_FOLDER_USE
+        .read()
+        .unwrap_or_else(PoisonError::into_inner);
     let extension = extension.to_ascii_lowercase();
     if !MEDIA_EXTENSIONS.contains(&extension.as_str()) {
         return Err(StorageError::BadMedia(format!(".{extension}")));
@@ -272,7 +339,99 @@ pub fn put_media(media_dir: &Path, bytes: &[u8], extension: &str) -> Result<Stri
                 .map_err(|err| StorageError::io(&target, err))
         })?;
     }
+    mark_used(media_dir, &id);
     Ok(id)
+}
+
+/// What one cleaning of the media folder did.
+#[derive(Debug, Default, PartialEq, serde::Serialize)]
+pub struct Cleaning {
+    pub removed: usize,
+    pub freed_bytes: u64,
+    pub left_bytes: u64,
+}
+
+/// Keeps the media folder from growing without end, without ever losing a sound. The folder is
+/// only a working copy: every story's package holds its own files.
+///
+/// Never removed: `keep` (what shared projects need; their files may exist nowhere else) and
+/// anything used since the app started. Of the rest, a file unused for `max_age` goes, and if
+/// the folder is still over `budget`, the least recently used go until it fits, but only those
+/// a known package or `store` also holds, so reopening a story simply unpacks them again.
+///
+/// Looks only at names, sizes and dates, and opens packages only when something is due.
+pub fn clean_media(
+    media_dir: &Path,
+    keep: &HashSet<String>,
+    packages: &[PathBuf],
+    store: Option<&Path>,
+    budget: u64,
+    max_age: Duration,
+) -> Cleaning {
+    let _cleaning = MEDIA_FOLDER_USE
+        .write()
+        .unwrap_or_else(PoisonError::into_inner);
+    let now = SystemTime::now();
+    let age = |modified: SystemTime| now.duration_since(modified).unwrap_or_default();
+    let Ok(entries) = fs::read_dir(media_dir) else {
+        return Cleaning::default();
+    };
+    let mut total = 0;
+    let mut files = Vec::new();
+    for entry in entries.filter_map(std::result::Result::ok) {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let Ok(meta) = entry.metadata() else { continue };
+        let modified = meta.modified().unwrap_or(now);
+        if is_media_id(&name) {
+            total += meta.len();
+            files.push((name, meta.len(), modified));
+        } else if name.ends_with(".tmp") && age(modified) > Duration::from_secs(86_400) {
+            // Left by a crash in the middle of unpacking. No write is running: we hold the lock.
+            let _ = fs::remove_file(entry.path());
+        }
+    }
+    let used = USED_THIS_RUN
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .clone();
+    files.retain(|(id, _, _)| !keep.contains(id) && !used.contains(id));
+    let mut cleaning = Cleaning {
+        left_bytes: total,
+        ..Cleaning::default()
+    };
+    if total <= budget
+        && files
+            .iter()
+            .all(|(_, _, modified)| age(*modified) <= max_age)
+    {
+        return cleaning;
+    }
+
+    // Only the directory of each package is read, never the sound data.
+    let mut elsewhere = HashSet::new();
+    for package in packages {
+        let archive = File::open(package)
+            .ok()
+            .and_then(|f| ZipArchive::new(f).ok());
+        for name in archive.iter().flat_map(|archive| archive.file_names()) {
+            if let Some(id) = name.strip_prefix(MEDIA_FOLDER) {
+                elsewhere.insert(id.to_owned());
+            }
+        }
+    }
+    files.sort_by_key(|(_, _, modified)| *modified);
+    for (id, size, modified) in files {
+        let spare = elsewhere.contains(&id) || store.is_some_and(|dir| dir.join(&id).is_file());
+        let due = age(modified) > max_age || (total > budget && spare);
+        // A file some other program holds open stays for the next cleaning.
+        if due && fs::remove_file(media_dir.join(&id)).is_ok() {
+            total -= size;
+            cleaning.removed += 1;
+            cleaning.freed_bytes += size;
+        }
+    }
+    cleaning.left_bytes = total;
+    cleaning
 }
 
 /// `<64 hex digits>.<accepted extension>`: the only names media ever has.
@@ -344,6 +503,9 @@ pub fn write_story_atomic(
     let mut unique = media.to_vec();
     unique.sort();
     unique.dedup();
+    let _in_use = MEDIA_FOLDER_USE
+        .read()
+        .unwrap_or_else(PoisonError::into_inner);
     if append_save(path, contents, &unique, media_dir)? {
         return Ok(());
     }
@@ -1400,5 +1562,175 @@ mod tests {
         assert_eq!(fresh.load(&path).unwrap(), "backup");
         assert_eq!(read_story_text(&path).unwrap(), "backup");
         assert_eq!(fs::read(fresh.media().join(&id)).unwrap(), track);
+    }
+
+    // ---------- cleaning the media folder ----------
+
+    const GB: u64 = 1024 * 1024 * 1024;
+    const MONTH: Duration = Duration::from_secs(30 * 86_400);
+
+    /// A cached file made as if last used `days` ago, unknown to this run. Its name is a real
+    /// id, but not of its contents: these tests only look at names, sizes and dates.
+    fn cached(dir: &TempDir, seed: u8, size: usize, days: u64) -> String {
+        fs::create_dir_all(dir.media()).unwrap();
+        let id = format!(
+            "{}.wav",
+            hex(&Sha256::digest([seed, size as u8, days as u8]))
+        );
+        let file = File::create(dir.media().join(&id)).unwrap();
+        file.set_len(size as u64).unwrap();
+        file.set_modified(SystemTime::now() - Duration::from_secs(days * 86_400))
+            .unwrap();
+        id
+    }
+
+    fn holds(dir: &TempDir, id: &str) -> bool {
+        dir.media().join(id).exists()
+    }
+
+    fn package_with(dir: &TempDir, name: &str, ids: &[&String]) -> PathBuf {
+        let path = dir.path(name);
+        let options = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
+        let mut zip = ZipWriter::new(File::create(&path).unwrap());
+        zip.start_file(STORY_ENTRY, options).unwrap();
+        for id in ids {
+            zip.start_file(format!("{MEDIA_FOLDER}{id}"), options)
+                .unwrap();
+        }
+        zip.finish().unwrap();
+        path
+    }
+
+    #[test]
+    fn leaves_a_folder_alone_while_it_is_small_and_recent() {
+        let dir = TempDir::new();
+        let id = cached(&dir, 1, 1000, 2);
+        let report = clean_media(&dir.media(), &HashSet::new(), &[], None, GB, MONTH);
+        assert_eq!(report.removed, 0);
+        assert_eq!(report.left_bytes, 1000);
+        assert!(holds(&dir, &id));
+    }
+
+    #[test]
+    fn removes_what_has_not_been_used_for_a_long_time() {
+        let dir = TempDir::new();
+        let old = cached(&dir, 2, 1000, 45);
+        let recent = cached(&dir, 3, 1000, 2);
+        let report = clean_media(&dir.media(), &HashSet::new(), &[], None, GB, MONTH);
+        assert_eq!(report.freed_bytes, 1000);
+        assert!(!holds(&dir, &old));
+        assert!(holds(&dir, &recent));
+    }
+
+    #[test]
+    fn over_budget_removes_the_least_recently_used_that_exist_elsewhere() {
+        let dir = TempDir::new();
+        let oldest = cached(&dir, 4, 1000, 20);
+        let newer = cached(&dir, 5, 1000, 10);
+        let only_copy = cached(&dir, 6, 1000, 25);
+        let package = package_with(&dir, "Keikka.sampo", &[&oldest, &newer]);
+        let report = clean_media(&dir.media(), &HashSet::new(), &[package], None, 2000, MONTH);
+        assert!(!holds(&dir, &oldest));
+        assert!(holds(&dir, &newer));
+        // Over budget or not, a recent file with no other copy is never the one to go.
+        assert!(holds(&dir, &only_copy));
+        assert_eq!(report.left_bytes, 2000);
+    }
+
+    #[test]
+    fn counts_the_version_history_as_a_second_copy() {
+        let dir = TempDir::new();
+        let id = cached(&dir, 7, 1000, 5);
+        let store = dir.path("store");
+        fs::create_dir_all(&store).unwrap();
+        fs::write(store.join(&id), b"kept").unwrap();
+        clean_media(&dir.media(), &HashSet::new(), &[], Some(&store), 10, MONTH);
+        assert!(!holds(&dir, &id));
+    }
+
+    #[test]
+    fn never_removes_what_shared_projects_need_however_old() {
+        let dir = TempDir::new();
+        let id = cached(&dir, 8, 1000, 400);
+        let package = package_with(&dir, "Myos.sampo", &[&id]);
+        let keep = HashSet::from([id.clone()]);
+        clean_media(&dir.media(), &keep, &[package], None, 10, MONTH);
+        assert!(holds(&dir, &id));
+    }
+
+    #[test]
+    fn never_removes_what_was_opened_or_added_in_this_run() {
+        let dir = TempDir::new();
+        let added = put_media(&dir.media(), &wav(1024, 41), "wav").unwrap();
+        let path = dir.path("Auki.sampo");
+        write_story_atomic(&path, "s", std::slice::from_ref(&added), &dir.media()).unwrap();
+        clean_media(
+            &dir.media(),
+            &HashSet::new(),
+            &[path],
+            None,
+            0,
+            Duration::ZERO,
+        );
+        assert!(holds(&dir, &added));
+    }
+
+    #[test]
+    fn a_cleaned_story_opens_again_with_every_sound_bit_for_bit() {
+        let dir = TempDir::new();
+        let track = wav(1024 * 1024, 43);
+        let id = format!("{}.wav", sha(&track));
+        let path = dir.path("Takaisin.sampo");
+        package_from_0_5_0(&path, "story", &[(&id, &track)]);
+        fs::create_dir_all(dir.media()).unwrap();
+        fs::write(dir.media().join(&id), &track).unwrap();
+
+        let report = clean_media(
+            &dir.media(),
+            &HashSet::new(),
+            std::slice::from_ref(&path),
+            None,
+            0,
+            MONTH,
+        );
+
+        assert_eq!(report.removed, 1);
+        assert_eq!(dir.load(&path).unwrap(), "story");
+        assert_eq!(fs::read(dir.media().join(&id)).unwrap(), track);
+    }
+
+    #[test]
+    fn clears_leftovers_of_a_crash_but_not_of_a_moment_ago() {
+        let dir = TempDir::new();
+        fs::create_dir_all(dir.media()).unwrap();
+        let old = dir.media().join("a.wav.tmp");
+        let fresh = dir.media().join("b.wav.tmp");
+        File::create(&old)
+            .unwrap()
+            .set_modified(SystemTime::now() - Duration::from_secs(3 * 86_400))
+            .unwrap();
+        File::create(&fresh).unwrap();
+        clean_media(&dir.media(), &HashSet::new(), &[], None, GB, MONTH);
+        assert!(!old.exists());
+        assert!(fresh.exists());
+    }
+
+    #[test]
+    fn a_file_whose_contents_break_its_name_is_not_unpacked() {
+        let dir = TempDir::new();
+        let false_id = format!("{}.wav", "a".repeat(64));
+        let track = wav(1024, 44);
+        let good_id = format!("{}.wav", sha(&track));
+        let path = dir.path("Vaara.sampo");
+        package_from_0_5_0(
+            &path,
+            "story",
+            &[(&false_id, b"not it"), (&good_id, &track)],
+        );
+
+        assert_eq!(dir.load(&path).unwrap(), "story");
+        assert!(!holds(&dir, &false_id));
+        assert!(holds(&dir, &good_id));
+        assert_eq!(fs::read_dir(dir.media()).unwrap().count(), 1);
     }
 }

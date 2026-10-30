@@ -3,6 +3,7 @@ import {
   mediaIdOf,
   NOTE_KINDS,
   isSwatch,
+  readSettings,
   type Beat,
   type Block,
   type CardType,
@@ -85,7 +86,15 @@ function readStory(r: Reader, value: unknown): Story | undefined {
     r.fail("story.cardTypes", "a story needs at least one card type");
   }
   if (id === undefined || title === undefined) return undefined;
-  return { id, title, cardTypes, entities, phases };
+  const settings = readSettings(o["settings"]);
+  return {
+    id,
+    title,
+    cardTypes,
+    entities,
+    phases,
+    ...(settings === undefined ? {} : { settings }),
+  };
 }
 
 function readCardType(r: Reader, value: unknown, path: string): CardType | undefined {

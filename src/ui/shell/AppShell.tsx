@@ -3,6 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 import { watchBackups } from "@app/backups";
 import { confirmWindowClose, openLaunchFile } from "@app/commands";
 import { live, watchProjects } from "@app/live/project";
+import { scheduleMediaCleanup } from "@app/media-cleanup";
+import { followStoryVolume } from "@app/sfx";
 import { isPlaying } from "@app/playback";
 import { ask } from "@app/store";
 import { guardWindowClose, toggleFullscreen } from "@app/window";
@@ -17,6 +19,7 @@ import { NoticeBar } from "./NoticeBar";
 import { NowPlaying } from "./NowPlaying";
 import { OpeningScreen } from "./OpeningScreen";
 import { PromptDialog } from "./PromptDialog";
+import { SettingsSheet } from "./SettingsSheet";
 import { ShortcutsSheet } from "./ShortcutsSheet";
 import { StartScreen } from "./StartScreen";
 import { Statusbar } from "./Statusbar";
@@ -37,6 +40,7 @@ export function AppShell() {
   const syncing = useStore(live, (s) => s.state.kind === "open" && s.state.gate !== null);
   const [focusing, setFocusing] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   // The first start after an update opens on what changed.
   const [showWhatsNew, setShowWhatsNew] = useState(isNewVersion);
   useShortcuts(deps);
@@ -46,6 +50,8 @@ export function AppShell() {
   // Shared stories open as their project; every story gets its version history.
   useEffect(() => watchProjects(deps), [deps]);
   useEffect(() => watchBackups(deps.document), [deps]);
+  useEffect(() => scheduleMediaCleanup(deps), [deps]);
+  useEffect(() => followStoryVolume(deps.document), [deps]);
 
   // Windows puts a window into menu mode when Alt is pressed alone; the next inputs then go
   // to a menu bar this app does not have, which made Alt + wheel zoom stop until a click.
@@ -94,6 +100,21 @@ export function AppShell() {
       window.removeEventListener("contextmenu", menu);
       window.removeEventListener("mouseup", back);
       window.removeEventListener("mousedown", back);
+    };
+  }, []);
+
+  // After a click on a player, the arrow keys and Space go back to the running order, instead
+  // of Space pausing the song through a button that happens to still have focus.
+  useEffect(() => {
+    const release = (event: PointerEvent) => {
+      const control = (event.target as Element).closest(".player, .deck");
+      if (control !== null && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    };
+    window.addEventListener("pointerup", release);
+    return () => {
+      window.removeEventListener("pointerup", release);
     };
   }, []);
 
@@ -226,6 +247,15 @@ export function AppShell() {
                 setFocusing(true);
               }
         }
+        onShowSettings={() => {
+          setShowSettings(true);
+        }}
+        onShowShortcuts={() => {
+          setShowShortcuts(true);
+        }}
+        onShowWhatsNew={() => {
+          setShowWhatsNew(true);
+        }}
       />
       <main className={`shell__main ${story === null ? "" : "shell__main--board"}`}>
         {/* Keyed by story: opening another story starts its board fresh, on the Board view. */}
@@ -253,6 +283,13 @@ export function AppShell() {
       <PromptDialog />
       {showShortcuts && <ShortcutsSheet onClose={closeShortcuts} />}
       {showWhatsNew && <WhatsNew onClose={closeWhatsNew} />}
+      {showSettings && story !== null && (
+        <SettingsSheet
+          onClose={() => {
+            setShowSettings(false);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,9 +1,11 @@
 import { useEffect, useRef, type MouseEvent, type PointerEvent } from "react";
 
-import { formatTime, playback, restart, stop, togglePlay } from "@app/playback";
+import { formatTime, playback } from "@app/playback";
 import { PlayIcon } from "@ui/board/AudioPlayer";
+import { keepKeysHere, usePlayerActions } from "@ui/board/use-player-actions";
 import { Waveform } from "@ui/board/Waveform";
 import { useStore } from "@ui/hooks/use-store";
+import { useServices } from "@ui/services/use-services";
 
 /** Dropped this close to its corner, the deck snaps home. */
 const SNAP_PX = 140;
@@ -99,6 +101,11 @@ function useDraggable(placement: "left" | "right") {
 export function NowPlaying({ placement = "right" }: { placement?: "left" | "right" }) {
   const state = useStore(playback, (s) => s);
   const draggable = useDraggable(placement);
+  const actions = usePlayerActions();
+  const safeAudio = useStore(
+    useServices().deps.document,
+    (s) => s.story?.settings?.safeAudio === true,
+  );
 
   useEffect(() => {
     if (!state.playing) return;
@@ -126,6 +133,7 @@ export function NowPlaying({ placement = "right" }: { placement?: "left" | "righ
       className={`deck deck--${placement} ${state.playing ? "is-playing" : ""}`}
       aria-label="Now playing"
       title="Drag to move; drop near the corner or double-click to put it back"
+      onKeyDown={keepKeysHere}
       {...draggable}
     >
       <div className="deck__controls">
@@ -134,7 +142,7 @@ export function NowPlaying({ placement = "right" }: { placement?: "left" | "righ
           className="deck__button"
           aria-label="Back to the start"
           title="Back to the start"
-          onClick={restart}
+          onClick={actions.restart}
         >
           <svg viewBox="0 0 12 12" aria-hidden="true">
             <path d="M2 2h1.6v8H2zM10.5 2v8L4.5 6z" />
@@ -145,7 +153,7 @@ export function NowPlaying({ placement = "right" }: { placement?: "left" | "righ
           className="deck__play"
           aria-label={`${state.playing ? "Pause" : "Play"} ${state.label}`}
           onClick={() => {
-            togglePlay(url, state.label);
+            actions.play(url, state.label);
           }}
         >
           <PlayIcon playing={state.playing} />
@@ -156,6 +164,14 @@ export function NowPlaying({ placement = "right" }: { placement?: "left" | "righ
           <span className="deck__label" title={state.label}>
             {state.label}
           </span>
+          {safeAudio && (
+            <span
+              className="deck__safe"
+              title="Safe audio mode is on: the app asks before cutting the song"
+            >
+              Safe
+            </span>
+          )}
           <span className={`deck__time ${state.error === null ? "" : "is-error"}`}>
             {state.error ?? (
               <>
@@ -172,7 +188,7 @@ export function NowPlaying({ placement = "right" }: { placement?: "left" | "righ
         className="deck__close"
         aria-label="Stop and close"
         title="Stop"
-        onClick={stop}
+        onClick={actions.stop}
       >
         <svg viewBox="0 0 12 12" aria-hidden="true">
           <path d="M3 3l6 6M9 3l-6 6" />

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { editStory } from "@app/store";
+import { editStory, showNotice } from "@app/store";
 import { setFullscreen } from "@app/window";
-import { updatePhase, type Beat, type Story } from "@core/model";
+import { setStorySettings, storyMediaIds, updatePhase, type Beat, type Story } from "@core/model";
 import { CardTypePicker, HeadingInput, StatusPicker, TensionPicker } from "@ui/board/BeatFields";
 import { insertCard, type InsertKind } from "@ui/board/insert-card";
 import { ScriptEditor } from "@ui/board/ScriptEditor";
+import { SfxVolume } from "@ui/board/SfxVolume";
 import { buildLookup } from "@ui/board/story-lookup";
 import { useAddImages, useImageInput } from "@ui/board/use-images";
 import { LivePresence } from "@ui/live/LivePresence";
@@ -19,17 +20,6 @@ interface FocusViewProps {
   story: Story;
   initialPhase?: number;
   onExit: () => void;
-}
-
-type Layout = "grid" | "list";
-const LAYOUT_KEY = "sampo.focusLayout";
-
-function readLayout(): Layout {
-  try {
-    return localStorage.getItem(LAYOUT_KEY) === "list" ? "list" : "grid";
-  } catch {
-    return "grid";
-  }
 }
 
 function isTyping(target: EventTarget | null): boolean {
@@ -47,11 +37,14 @@ function isTyping(target: EventTarget | null): boolean {
  * Everything stays editable, so notes from the meeting go straight into the story.
  */
 export function FocusView({ story, initialPhase = 0, onExit }: FocusViewProps) {
-  const { document: store } = useServices().deps;
+  const { document: store, files, notices } = useServices().deps;
   const [requested, setRequested] = useState(initialPhase);
   const [newCard, setNewCard] = useState<string | null>(null);
   const lookup = useMemo(() => buildLookup(story), [story]);
-  const [layout, setLayout] = useState<Layout>(readLayout);
+  const hasEffects = story.phases.some((p) =>
+    p.beats.some((beat) => beat.blocks.some((b) => b.type === "audio" && b.role === "sfx")),
+  );
+  const layout = story.settings?.focusLayout ?? "grid";
 
   const last = Math.max(story.phases.length - 1, 0);
   const index = Math.min(Math.max(requested, 0), last);
@@ -72,6 +65,22 @@ export function FocusView({ story, initialPhase = 0, onExit }: FocusViewProps) {
     },
     [last],
   );
+
+  // Better to hear it before the show than to find out at the song.
+  useEffect(() => {
+    const current = store.getState().story;
+    if (current === null) return;
+    void files.missingMedia(storyMediaIds(current)).then((missing) => {
+      if (missing.length === 0) return;
+      showNotice(notices, {
+        tone: "error",
+        title:
+          missing.length === 1
+            ? "1 picture or sound is missing from this computer and will not play."
+            : `${missing.length} pictures or sounds are missing from this computer and will not play.`,
+      });
+    });
+  }, [store, files, notices]);
 
   useEffect(() => {
     void setFullscreen(true);
@@ -118,13 +127,7 @@ export function FocusView({ story, initialPhase = 0, onExit }: FocusViewProps) {
   };
 
   const switchLayout = () => {
-    const nextLayout: Layout = layout === "grid" ? "list" : "grid";
-    setLayout(nextLayout);
-    try {
-      localStorage.setItem(LAYOUT_KEY, nextLayout);
-    } catch {
-      // Remembering the choice is a nicety; the switch itself works without storage.
-    }
+    edit((s) => setStorySettings(s, { focusLayout: layout === "grid" ? "list" : "grid" }));
   };
 
   const previous = story.phases[index - 1];
@@ -138,6 +141,7 @@ export function FocusView({ story, initialPhase = 0, onExit }: FocusViewProps) {
         <span className="focus__progress">
           Phase {index + 1} of {story.phases.length}
         </span>
+        {hasEffects && <SfxVolume />}
         <button
           type="button"
           className="focus__exit focus__layout"

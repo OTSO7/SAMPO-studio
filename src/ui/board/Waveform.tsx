@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } fr
 import { cachedPeaks, loadPeaks, type Peaks } from "@app/peaks";
 import { currentTime, formatTime, playback, seek, seekTo } from "@app/playback";
 import { useStore } from "@ui/hooks/use-store";
+import { useServices } from "@ui/services/use-services";
 
 interface WaveformProps {
   url: string;
@@ -15,10 +16,12 @@ interface WaveformProps {
 
 const BAR = 2;
 const GAP = 1;
+/** In safe audio mode, during a song the pointer must travel this far before it moves the song. */
+const DRAG_PX = 6;
 
 /**
- * The track's waveform, which is also where you move in it: press anywhere to jump there,
- * or hold and drag to scrub, with the sound following. The played part fills in as it plays.
+ * The loaded track's waveform, which is also where you move in it: hold and drag to scrub, with
+ * the sound following. A click jumps there, except during a song in safe audio mode. The played part fills in as it plays.
  * Arrow keys step five seconds. Without a measured waveform it is a plain line that works the
  * same.
  */
@@ -29,7 +32,12 @@ export function Waveform({ url, label, length, large = false }: WaveformProps) {
   const [width, setWidth] = useState(0);
   const [hover, setHover] = useState<number | null>(null);
   const [drag, setDrag] = useState<number | null>(null);
+  const safeAudio = useStore(
+    useServices().deps.document,
+    (s) => s.story?.settings?.safeAudio === true,
+  );
   const lastSeek = useRef(0);
+  const pressedAt = useRef<number | null>(null);
   const current = state !== null;
   const duration = state !== null && state.duration > 0 ? state.duration : length;
 
@@ -89,7 +97,7 @@ export function Waveform({ url, label, length, large = false }: WaveformProps) {
     const now = performance.now();
     if (!force && now - lastSeek.current < 50) return;
     lastSeek.current = now;
-    seekTo(url, label, share);
+    seekTo(url, share);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -104,13 +112,15 @@ export function Waveform({ url, label, length, large = false }: WaveformProps) {
     const to = moves[event.key];
     if (to === undefined) return;
     event.preventDefault();
+    // Handled here: focus mode must not also turn the page on the same key.
+    event.stopPropagation();
     seek(to);
   };
 
   const shown = drag ?? hover;
   return (
     <div
-      className={`wave ${large ? "wave--large" : ""} ${drag !== null ? "is-dragging" : ""}`}
+      className={`wave ${large ? "wave--large" : ""} ${drag !== null ? "is-dragging" : ""} ${current ? "" : "is-idle"}`}
       role="slider"
       tabIndex={0}
       aria-label={`Position in ${label}`}
@@ -119,27 +129,33 @@ export function Waveform({ url, label, length, large = false }: WaveformProps) {
       aria-valuenow={Math.round(state?.time ?? 0)}
       aria-valuetext={`${formatTime(state?.time ?? 0)} of ${formatTime(duration)}`}
       onPointerDown={(event) => {
-        if (event.button !== 0) return;
+        if (event.button !== 0 || !current) return;
         event.currentTarget.setPointerCapture(event.pointerId);
+        pressedAt.current = event.clientX;
+        // In safe audio mode, a slip of the hand during a song must not move it.
+        if (safeAudio && state.playing) return;
         const share = shareAt(event);
         setDrag(share);
         jump(share, true);
       }}
       onPointerMove={(event) => {
         const share = shareAt(event);
-        if (drag === null) {
-          setHover(share);
+        const pressed = pressedAt.current;
+        if (drag === null && (pressed === null || Math.abs(event.clientX - pressed) < DRAG_PX)) {
+          if (current) setHover(share);
           return;
         }
         setDrag(share);
         jump(share, false);
       }}
       onPointerUp={(event) => {
+        pressedAt.current = null;
         if (drag === null) return;
         jump(shareAt(event), true);
         setDrag(null);
       }}
       onPointerCancel={() => {
+        pressedAt.current = null;
         setDrag(null);
       }}
       onPointerLeave={() => {

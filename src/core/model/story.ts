@@ -1,4 +1,5 @@
 import type { Block } from "./block";
+import type { StorySettings } from "./settings";
 import type { Entity } from "./entity";
 import type { BeatId, CardTypeId, EntityId, PhaseId, StoryId } from "./ids";
 import type { Swatch } from "./palette";
@@ -51,4 +52,6 @@ export interface Story {
   readonly cardTypes: readonly CardType[];
   readonly phases: readonly Phase[];
   readonly entities: readonly Entity[];
+  /** Absent while every setting is at its default. */
+  readonly settings?: StorySettings;
 }

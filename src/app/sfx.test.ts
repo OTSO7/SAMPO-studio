@@ -5,12 +5,13 @@ import type * as Sfx from "./sfx";
 /** Records what Web Audio is asked to do; sources end only when told to. */
 class FakeContext {
   static decodes = 0;
+  static decodedLength = 1000;
   static started = 0;
   static sources: FakeSource[] = [];
   state = "running";
   destination = {};
   createGain() {
-    return { connect: () => undefined };
+    return { connect: () => undefined, gain: { value: 1 } };
   }
   createBufferSource() {
     const source = new FakeSource();
@@ -19,7 +20,11 @@ class FakeContext {
   }
   decodeAudioData() {
     FakeContext.decodes++;
-    return Promise.resolve({ duration: 0.3 });
+    return Promise.resolve({
+      duration: 0.3,
+      length: FakeContext.decodedLength,
+      numberOfChannels: 2,
+    });
   }
   resume() {
     this.state = "running";
@@ -47,6 +52,7 @@ let sfx: typeof Sfx;
 beforeEach(async () => {
   vi.resetModules();
   FakeContext.decodes = 0;
+  FakeContext.decodedLength = 1000;
   FakeContext.started = 0;
   FakeContext.sources = [];
   vi.stubGlobal("AudioContext", FakeContext);
@@ -127,6 +133,33 @@ describe("sound effects", () => {
     expect(Object.keys(sfx.sfxPlaying.getState().hits)).toEqual(["asset://short.wav"]);
     sfx.stopAllSfx();
     expect(sfx.sfxPlaying.getState().hits).toEqual({});
+  });
+
+  it("keeps at most 512 MB of effects ready, dropping the longest unused first", async () => {
+    FakeContext.decodedLength = 25_000_000; // 200 MB each in stereo.
+    await sfx.preloadSfx("asset://a.wav");
+    await sfx.preloadSfx("asset://b.wav");
+    await sfx.preloadSfx("asset://a.wav"); // Used again, so "b" is now the longest unused.
+    await sfx.preloadSfx("asset://c.wav"); // 600 MB in all: one has to go.
+    expect(FakeContext.decodes).toBe(3);
+    await sfx.preloadSfx("asset://a.wav");
+    expect(FakeContext.decodes).toBe(3);
+    await sfx.preloadSfx("asset://b.wav");
+    expect(FakeContext.decodes).toBe(4);
+  });
+
+  it("takes the volume from the open story and goes back to the default without one", async () => {
+    const { createDocumentStore, loadDocument } = await import("./store/document-store");
+    const { sampleStory } = await import("@core/testing/sample-story");
+    const { setStorySettings } = await import("@core/model");
+    const document = createDocumentStore();
+    const stop = sfx.followStoryVolume(document);
+
+    loadDocument(document, setStorySettings(sampleStory(), { sfxVolume: 0.5 }), null);
+    expect(sfx.sfxVolume.getState().level).toBe(0.5);
+    loadDocument(document, sampleStory(), null);
+    expect(sfx.sfxVolume.getState().level).toBe(0.8);
+    stop();
   });
 
   it("knows how long an effect is once decoded, for the progress bar", async () => {

@@ -78,3 +78,5 @@ export type { Swatch } from "./palette";
 export { isSwatch, nextSwatch, SWATCHES } from "./palette";
 export type { Beat, BeatStatus, CardType, Intensity, Phase, Story } from "./story";
 export { BEAT_STATUSES } from "./story";
+export type { FocusLayout, StorySettings } from "./settings";
+export { DEFAULT_SFX_VOLUME, readSettings, setStorySettings } from "./settings";

@@ -3,6 +3,48 @@
 What is new in each version of SAMPO Studio. The app shows the latest entries after it
 updates; click the version number in the bottom corner to read them again.
 
+## 0.6.4 — 2026-10-30
+
+Menus, settings saved with your story, and steadier playback for live shows.
+
+### Highlights
+
+- A menu bar with File, Edit, View, Settings and Help.
+- A new Settings window. Your choices are saved in the story file, so they go with it to
+  another computer.
+- Safe audio mode: turn it on to get a confirmation before a playing song is stopped, restarted
+  or replaced.
+- A volume control for sound effects.
+- Large songs use far less memory, and the app clears out old temporary sound files by itself.
+
+### New
+
+- Settings holds Safe audio mode, sound effect volume and the card layout for focus mode. The
+  Save button there saves the whole story.
+- While Safe audio mode is on, a stray click on the waveform no longer moves the song. Hold and
+  drag to move it.
+- Focus mode warns you when opening if a picture or sound is missing from this computer.
+
+### Improved
+
+- Your work is now saved while music plays, so a crash during a show loses as little as possible.
+- Songs are read in small pieces instead of being loaded into memory all at once.
+- Sound files you have not used for 30 days are removed from the app's temporary storage, and
+  so are the oldest when it passes 8 GB. They come back from your story file when you next open
+  it. Sounds in shared projects are always kept.
+- Sound effects use at most about 512 MB of memory.
+- The first time a large story opens on a computer, every sound is checked against its
+  original, so it takes a little longer. A file that does not match is not used.
+- Shared projects no longer send sound files to others while a song is playing.
+
+### Fixed
+
+- Pressing Space or the arrow keys on a music player or sound effect could also change the
+  phase in focus mode.
+- Installing an update while music is playing is no longer possible.
+- A shared project could wrongly report that it could not reach the cloud after many connection
+  attempts.
+
 ## 0.6.3 — 2026-10-29
 
 A cleaner look for the start screen and focus mode.
